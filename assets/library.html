@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Web Avenger</title>
+<style>
+  :root {
+    --bg: #0b0e14; --surface: #141925; --surface-2: #1c2333; --border: #262f42;
+    --text: #e6e9f0; --muted: #8a93a6; --accent: #7c5cff; --accent-2: #22d3ee;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(1200px 600px at 10% -10%, #1d1640 0%, transparent 60%), var(--bg);
+    color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 24px; padding: 28px 40px 16px; flex-wrap: wrap;
+  }
+  h1 { margin: 0; font-size: 26px; letter-spacing: .5px; }
+  h1 span {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; color: transparent;
+  }
+  .count { color: var(--muted); font-size: 13px; }
+  input[type=search] {
+    margin-left: auto; width: min(360px, 100%); padding: 10px 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; outline: none;
+  }
+  input[type=search]:focus { border-color: var(--accent); }
+  main {
+    flex: 1; padding: 8px 40px 32px; display: grid; gap: 22px; align-content: start;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  .card {
+    display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden; color: inherit; text-decoration: none;
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .card:hover, .card:focus-visible {
+    transform: translateY(-3px); border-color: var(--accent); outline: none;
+    box-shadow: 0 12px 32px rgba(124, 92, 255, .25);
+  }
+  .thumb { aspect-ratio: 16 / 9; background: var(--surface-2) center / cover no-repeat; position: relative; }
+  .thumb .play {
+    position: absolute; inset: auto 12px 12px auto; padding: 6px 14px; border-radius: 999px;
+    background: var(--accent); color: #fff; font-weight: 600; font-size: 13px;
+    opacity: 0; transition: opacity .15s ease;
+  }
+  .card:hover .play, .card:focus-visible .play { opacity: 1; }
+  .info { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .info h2 { margin: 0; font-size: 17px; }
+  .info p { margin: 0; color: var(--muted); font-size: 13px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2);
+    color: var(--accent-2); border: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px;
+  }
+  .empty { color: var(--muted); grid-column: 1 / -1; text-align: center; padding: 48px 0; }
+  footer {
+    padding: 12px 40px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border);
+    display: flex; gap: 18px; flex-wrap: wrap;
+  }
+  kbd {
+    font: 11px ui-monospace, monospace; padding: 1px 6px; border-radius: 4px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Web <span>Avenger</span></h1>
+  <span class="count" id="count"></span>
+  <input type="search" id="search" placeholder="Buscar jogo ou tag..." autofocus>
+</header>
+<main id="grid"></main>
+<footer>
+  <span><kbd>F1</kbd> Biblioteca</span>
+  <span><kbd>F11</kbd> Tela cheia</span>
+  <span><kbd>F5</kbd> Recarregar</span>
+  <span>Adicione jogos em <kbd>~/.config/web-avenger/games.json</kbd></span>
+</footer>
+<script>
+  const GAMES = /*GAMES*/[];
+  const grid = document.getElementById("grid");
+  const search = document.getElementById("search");
+  const count = document.getElementById("count");
+
+  function el(tag, props = {}, children = []) {
+    const node = Object.assign(document.createElement(tag), props);
+    node.append(...children);
+    return node;
+  }
+
+  function card(game) {
+    const thumb = el("div", { className: "thumb" }, [el("span", { className: "play", textContent: "▶ Jogar" })]);
+    if (game.thumbnail) thumb.style.backgroundImage = `url("${encodeURI(game.thumbnail)}")`;
+    const tags = el("div", { className: "tags" }, game.tags.map(t => el("span", { className: "tag", textContent: t })));
+    const info = el("div", { className: "info" }, [
+      el("h2", { textContent: game.name }),
+      ...(game.description ? [el("p", { textContent: game.description })] : []),
+      tags,
+    ]);
+    return el("a", { className: "card", href: game.url, title: game.url }, [thumb, info]);
+  }
+
+  function render() {
+    const q = search.value.trim().toLowerCase();
+    const games = GAMES.filter(g =>
+      !q || g.name.toLowerCase().includes(q) || g.tags.some(t => t.toLowerCase().includes(q)));
+    grid.replaceChildren(...(games.length
+      ? games.map(card)
+      : [el("div", { className: "empty", textContent: "Nenhum jogo encontrado." })]));
+    count.textContent = `${games.length} de ${GAMES.length} jogo${GAMES.length === 1 ? "" : "s"}`;
+  }
+
+  search.addEventListener("input", render);
+  render();
+</script>
+</body>
+</html>

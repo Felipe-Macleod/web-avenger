@@ -58,6 +58,10 @@ O catálogo padrão fica em `games.json` (embutido no binário). Também dá par
 
 Entradas com o mesmo `id` de um jogo embutido substituem a original.
 
+## Compartilhar jogos
+
+No menu do card (botão direito), **Compartilhar (copiar link)** copia um link como `webavenger://add?v=1&m=…`. O link carrega o próprio cadastro do jogo (nome, URL, página, descrição, capa `http(s)` e tags, em JSON codificado em base64url), então não depende de servidor. Quem recebe cola o link no campo de URL de **+ Adicionar** e o cadastro já aparece preenchido para revisar; nada é gravado antes de clicar em **Adicionar**. Jogos importados do itch.io viram jogos manuais para quem recebe.
+
 ## Tempo de jogo e ordenação
 
 O launcher mede o tempo que cada jogo fica aberto (de entrar no jogo até voltar para a Biblioteca ou fechar a janela) e a última vez jogado. Os cards mostram, por exemplo, "3 h 12 min · há 2 dias"; **Recentes** na sidebar lista os jogos já jogados, do mais recente ao mais antigo. Os dados ficam em `~/.local/share/web-avenger/playtime.json` (gravados também a cada minuto, para não perder tempo se o app cair).

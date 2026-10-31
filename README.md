@@ -64,6 +64,7 @@ O item **Configurações** da sidebar (salva em `~/.config/web-avenger/settings.
 
 - **Abrir jogos em tela cheia** (ligada por padrão): a janela entra em tela cheia ao abrir um jogo e sai ao voltar para a Biblioteca (`F1`). `F11` continua alternando manualmente.
 - **Maximizar o player do jogo** (ligada por padrão): players Unity WebGL (template padrão do Unity 2020+ e do UnityLoader antigo) ocupam a janela inteira mantendo a proporção, sem o rodapé (`assets/player-fit.js`).
+- **Mostrar jogos +18** (desligada por padrão): desligada, esconde da Biblioteca (grade, contagens, categorias e Recentes) os jogos com as tags `nsfw`, `porn`, `hentai`, `adult`, `erotic` ou `18+`.
 - **Tradução de input**: apresenta controles que não são de Xbox (ex.: Switch Pro Controller, DualSense) aos jogos como um controle de Xbox (`mapping: "standard"`, id XInput). Controles da Nintendo e da PlayStation, que o Chromium não enxerga direito com os drivers do kernel (`hid-nintendo`, `hid-playstation`), são lidos direto do `/dev/input/js*` pelo launcher (`src/native_pads.rs`) e traduzidos pelo código evdev de cada botão (`BTN_SOUTH` → A etc.).
 - **Mapeamento manual**: para controles genéricos que os jogos não reconhecem. Escolha o controle, clique em **Mapear** e aperte cada botão pedido (ou **Pular**). O mapeamento é salvo por `vendor:product` e tem prioridade sobre o automático.
 - **Botões de controles Nintendo**: por posição (B embaixo = A do Xbox) ou por rótulo (A = A).

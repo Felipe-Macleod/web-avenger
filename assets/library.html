@@ -303,6 +303,16 @@
         </label>
       </div>
       <div class="row">
+        <div class="text">
+          <strong>Mostrar jogos +18</strong>
+          <span>Desligado, jogos com tags como NSFW, Porn, Hentai, Adult ou Erotic ficam escondidos da Biblioteca.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="show-adult" role="switch" aria-label="Mostrar jogos +18">
+          <span class="track"></span>
+        </label>
+      </div>
+      <div class="row">
         <div class="text"><span>As mudanças valem para jogos abertos a partir de agora.</span></div>
         <span class="saved" id="saved-games">✓ Salvo</span>
       </div>
@@ -443,6 +453,13 @@
 <script>
   const GAMES = /*GAMES*/[];
 
+  // Jogos +18: escondidos (Biblioteca, contagens, categorias, Recentes) se a opção
+  // "Mostrar jogos +18" estiver desligada, que é o padrão.
+  const ADULT_TAGS = new Set(["nsfw", "porn", "hentai", "adult", "erotic", "18+"]);
+  const isAdult = (game) => game.tags.some((tag) => ADULT_TAGS.has(tag.trim().toLowerCase()));
+  let showAdult = Boolean(window.avengerSettings?.show_adult);
+  const visibleGames = () => (showAdult ? GAMES : GAMES.filter((game) => !isAdult(game)));
+
   // `url("…")` do CSS sem recodificar a URL (capas do itch.io já vêm com `%2B` etc.).
   const cssUrl = (url) => `url("${url.replace(/["\\\n]/g, (c) => encodeURIComponent(c))}")`;
 
@@ -488,7 +505,7 @@
   function recentGames() {
     let recent = [];
     try { recent = JSON.parse(load(localStorage, "recent") ?? "[]"); } catch {}
-    return recent.map(({ id }) => GAMES.find((g) => g.id === id)).filter(Boolean);
+    return recent.map(({ id }) => visibleGames().find((g) => g.id === id)).filter(Boolean);
   }
   function recordRecent(id) {
     let recent = [];
@@ -499,16 +516,17 @@
 
   function allTags() {
     const counts = new Map();
-    for (const game of GAMES) for (const tag of game.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    for (const game of visibleGames()) for (const tag of game.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
     return [...counts].sort(([a], [b]) => a.localeCompare(b, "pt-BR"));
   }
 
   function gamesForView(view) {
     if (view === "recent") return recentGames();
-    if (view.startsWith("tag:")) return GAMES.filter((g) => g.tags.includes(view.slice(4)));
-    if (view === "source:manual") return GAMES.filter((g) => !g.source);
-    if (view.startsWith("source:")) return GAMES.filter((g) => g.source === view.slice(7));
-    return GAMES;
+    const games = visibleGames();
+    if (view.startsWith("tag:")) return games.filter((g) => g.tags.includes(view.slice(4)));
+    if (view === "source:manual") return games.filter((g) => !g.source);
+    if (view.startsWith("source:")) return games.filter((g) => g.source === view.slice(7));
+    return games;
   }
 
   function viewName(view) {
@@ -536,13 +554,13 @@
     const tags = allTags();
     sidebarNav.replaceChildren(
       section("Biblioteca", [
-        navItem("all", "all", "Todos os jogos", GAMES.length),
+        navItem("all", "all", "Todos os jogos", gamesForView("all").length),
         navItem("recent", "recent", "Recentes", recentGames().length),
       ]),
       section("Fontes", [
-        navItem("source:manual", "source", "Manual", GAMES.filter((g) => !g.source).length),
-        ...(GAMES.some((g) => g.source === "itch.io")
-          ? [navItem("source:itch.io", "itch", "itch.io", GAMES.filter((g) => g.source === "itch.io").length)]
+        navItem("source:manual", "source", "Manual", gamesForView("source:manual").length),
+        ...(gamesForView("source:itch.io").length
+          ? [navItem("source:itch.io", "itch", "itch.io", gamesForView("source:itch.io").length)]
           : []),
       ]),
       ...(tags.length ? [section("Categorias", tags.map(([tag, n]) => navItem(`tag:${tag}`, "tag", tag, n)))] : []),
@@ -552,7 +570,7 @@
 
   function selectView(view) {
     // Uma categoria que deixou de existir (jogo editado/removido) volta para "Todos".
-    if (view.startsWith("tag:") && !GAMES.some((g) => g.tags.includes(view.slice(4)))) view = "all";
+    if (view.startsWith("tag:") && !gamesForView(view).length) view = "all";
     currentView = view;
     const isSettings = view === "settings";
     document.getElementById("library").hidden = isSettings;
@@ -804,6 +822,7 @@
     const cardOf = (id) => grid.querySelector(`[data-id="${CSS.escape(id)}"]`);
     if (!cardOf(saved.id)) selectView("all");
     const changed = cardOf(saved.id);
+    if (!changed) return; // ex.: jogo +18 com a opção desligada
     changed.classList.add("new");
     changed.scrollIntoView({ behavior: "smooth", block: "center" });
     changed.focus();
@@ -883,10 +902,11 @@
   // ---- Configurações ----
   // `avengerSettings` e `avengerSaveSettings` são injetados pelo launcher.
   const settings = Object.assign(
-    { fullscreen_games: true, maximize_player: true, input_translation: false, button_layout: "position", mappings: {} },
+    { fullscreen_games: true, maximize_player: true, show_adult: false, input_translation: false, button_layout: "position", mappings: {} },
     window.avengerSettings);
   const fullscreenInput = document.getElementById("fullscreen-games");
   const maximizeInput = document.getElementById("maximize-player");
+  const showAdultInput = document.getElementById("show-adult");
   const translationInput = document.getElementById("input-translation");
   const layoutSelect = document.getElementById("button-layout");
   const layoutRow = document.getElementById("layout-row");
@@ -895,6 +915,7 @@
   function applySettings() {
     fullscreenInput.checked = settings.fullscreen_games;
     maximizeInput.checked = settings.maximize_player;
+    showAdultInput.checked = settings.show_adult;
     translationInput.checked = settings.input_translation;
     layoutSelect.value = settings.button_layout;
     layoutRow.classList.toggle("disabled", !settings.input_translation);
@@ -924,6 +945,12 @@
   fullscreenInput.addEventListener("change", () => {
     settings.fullscreen_games = fullscreenInput.checked;
     save(document.getElementById("saved-games"));
+  });
+  showAdultInput.addEventListener("change", () => {
+    settings.show_adult = showAdultInput.checked;
+    showAdult = settings.show_adult;
+    save(document.getElementById("saved-games"));
+    renderLibrary(); // contagens e categorias da sidebar
   });
   maximizeInput.addEventListener("change", () => {
     settings.maximize_player = maximizeInput.checked;

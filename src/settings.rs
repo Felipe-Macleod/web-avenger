@@ -23,6 +23,9 @@ pub struct Settings {
     pub fullscreen_games: bool,
     /// Faz players Unity WebGL ocuparem a janela inteira (mantendo a proporção).
     pub maximize_player: bool,
+    /// Mostra jogos com tags adultas (NSFW, Porn, Hentai...); desligado por padrão.
+    /// O filtro em si fica na Biblioteca (`assets/library.html`).
+    pub show_adult: bool,
     /// Apresenta controles não-Xbox aos jogos como um controle Xbox.
     pub input_translation: bool,
     pub button_layout: ButtonLayout,
@@ -36,6 +39,7 @@ impl Default for Settings {
         Self {
             fullscreen_games: true,
             maximize_player: true,
+            show_adult: false,
             input_translation: false,
             button_layout: ButtonLayout::default(),
             mappings: BTreeMap::new(),

@@ -33,7 +33,9 @@ Para depurar, use `./web-avenger --remote-debugging-port=9222` e abra `chrome://
 
 ## Adicionando jogos
 
-Clique em **+ Adicionar jogo** na Biblioteca e informe a URL. O launcher lê a página (título, `og:image` e descrição) e abre o cadastro já preenchido para você revisar. O jogo é gravado em `~/.config/web-avenger/games.json`.
+Clique em **+ Adicionar jogo** na Biblioteca e informe a URL. O launcher lê a página (título, `og:image` e descrição) e abre o cadastro já preenchido para você revisar.
+
+Páginas do **itch.io** são reconhecidas sem chave de API: o nome, a capa e as tags vêm do `data.json` público da página, e a URL salva é a do jogo HTML5 (`html-classic.itch.zone/html/<upload>/…`, o mesmo que o "Run game" carrega), com a página do itch guardada como `homepage`. Jogos só para download não têm versão de navegador e ficam com a URL da página. O jogo é gravado em `~/.config/web-avenger/games.json`.
 
 O catálogo padrão fica em `games.json` (embutido no binário). Também dá para editar `~/.config/web-avenger/games.json` à mão para adicionar ou sobrescrever jogos:
 

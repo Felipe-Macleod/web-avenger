@@ -294,6 +294,8 @@
       </label>
       <label class="field"><span>URL do jogo</span>
         <input name="url" type="url" required pattern="(https?|file)://.+" placeholder="https://exemplo.com/jogo/" autocomplete="off">
+        <small class="hint-text" id="detected-hint" hidden></small>
+        <input type="hidden" name="homepage">
       </label>
       <label class="field"><span>Imagem de capa <small>(URL, opcional)</small></span>
         <input name="thumbnail" type="url" pattern="(https?|file|data):.+" placeholder="https://exemplo.com/capa.jpg" autocomplete="off">
@@ -322,6 +324,9 @@
 </footer>
 <script>
   const GAMES = /*GAMES*/[];
+
+  // `url("…")` do CSS sem recodificar a URL (capas do itch.io já vêm com `%2B` etc.).
+  const cssUrl = (url) => `url("${url.replace(/["\\\n]/g, (c) => encodeURIComponent(c))}")`;
 
   function el(tag, props = {}, children = []) {
     const node = Object.assign(document.createElement(tag), props);
@@ -353,7 +358,7 @@
 
   function card(game) {
     const thumb = el("div", { className: "thumb" }, [el("span", { className: "play", textContent: "▶ Jogar" })]);
-    if (game.thumbnail) thumb.style.backgroundImage = `url("${encodeURI(game.thumbnail)}")`;
+    if (game.thumbnail) thumb.style.backgroundImage = cssUrl(game.thumbnail);
     const tags = el("div", { className: "tags" }, game.tags.map((t) => el("span", { className: "tag", textContent: t })));
     const info = el("div", { className: "info" }, [
       el("h2", { textContent: game.name }),
@@ -385,13 +390,14 @@
   function updatePreview() {
     const url = gameForm.thumbnail.value.trim();
     const valid = url && gameForm.thumbnail.checkValidity();
-    gamePreview.style.backgroundImage = valid ? `url("${encodeURI(url)}")` : "";
+    gamePreview.style.backgroundImage = valid ? cssUrl(url) : "";
     gamePreview.textContent = valid ? "" : "Sem capa";
   }
 
   const urlForm = document.getElementById("url-form");
   const urlStatus = document.getElementById("url-status");
   const urlNext = document.getElementById("url-next");
+  const detectedHint = document.getElementById("detected-hint");
   const URL_HINT = urlStatus.textContent;
   let fetchId = 0;
 
@@ -454,10 +460,18 @@
     if (id !== fetchId || !gameDialog.open) return; // cancelado ou reaberto no meio
     setFetching(false);
 
-    gameForm.url.value = url;
+    // Página que só incorpora o jogo (ex.: itch.io): salva o jogo e guarda a página como site.
+    const embedded = info.game_url && info.game_url !== url;
+    gameForm.url.value = embedded ? info.game_url : url;
+    gameForm.homepage.value = embedded ? url : "";
+    detectedHint.hidden = !embedded;
+    detectedHint.textContent = /\.itch\.io\//.test(url + "/")
+      ? "Jogo do itch.io detectado — a página original fica salva como site."
+      : "Jogo detectado na página — a página original fica salva como site.";
     gameForm.name.value = info.title || nameFromUrl(url);
     gameForm.description.value = info.description ?? "";
     gameForm.thumbnail.value = info.thumbnail ?? "";
+    gameForm.tags.value = (info.tags ?? []).join(", ");
     updatePreview();
     gameError.textContent = "Não foi possível ler a página; preencha os dados manualmente.";
     gameError.hidden = info.ok;
@@ -466,7 +480,7 @@
   });
 
   document.getElementById("game-back").addEventListener("click", () => {
-    urlForm.url.value = gameForm.url.value;
+    urlForm.url.value = gameForm.homepage.value || gameForm.url.value;
     gameError.hidden = true;
     showStep(1);
   });
@@ -484,6 +498,7 @@
     const game = {
       name: value("name"),
       url: value("url"),
+      homepage: value("homepage") || null,
       description: value("description"),
       thumbnail: value("thumbnail") || null,
       tags: value("tags").split(",").map((t) => t.trim()).filter(Boolean),

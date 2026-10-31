@@ -101,4 +101,9 @@ As builds do CEF não trazem codecs proprietários, então o Chromium embutido n
 
 ## Dados
 
-O perfil do navegador (cache, IndexedDB, saves e cookies) fica em `~/.local/share/web-avenger/`.
+Tudo fica em `~/.local/share/web-avenger/`:
+
+- **Perfil principal** (`Default/`): a Biblioteca e os jogos importados do itch.io (que precisam da sessão do itch.io feita no app), com cache, cookies, IndexedDB e localStorage.
+- **Um perfil por jogo manual** (`game-<id>/`): cada jogo da Fonte "Manual" roda isolado, como numa janela anônima, mas os dados persistem entre sessões. Um jogo não enxerga cookies nem saves dos outros, nem a sessão do itch.io. Na primeira vez que um jogo manual abre com perfil próprio, o IndexedDB da origem dele é copiado do perfil principal (onde ficam os saves de Unity/Emscripten); o localStorage antigo não é migrado (é um banco único para todas as origens).
+
+Remover um jogo não apaga a pasta do perfil dele.

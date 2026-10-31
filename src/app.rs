@@ -14,6 +14,10 @@ const SWITCHES: &[(&str, Option<&str>)] = &[
     // Views do CEF em Wayland nativo não acompanha os resizes do compositor
     // (fullscreen e tiling ficam com o conteúdo preso no tamanho inicial).
     ("ozone-platform", Some("x11")),
+    // No estilo Chrome, inicializar um perfil novo (jogos manuais, ver `profiles`)
+    // abriria uma janela "Nova guia" do Chromium. (`no-startup-window` também evitaria,
+    // mas mantém o processo vivo depois de fechar a janela.)
+    ("no-first-run", None),
 ];
 
 wrap_app! {
@@ -102,6 +106,7 @@ wrap_window_delegate! {
             window.add_child_view(Some(&mut view));
             window.show();
             browser_view.request_focus();
+            crate::shell::init(window.clone(), browser_view.clone());
         }
 
         fn on_window_fullscreen_transition(&self, window: Option<&mut Window>, is_completed: i32) {
@@ -117,6 +122,10 @@ wrap_window_delegate! {
 
         fn on_window_destroyed(&self, _window: Option<&mut Window>) {
             *self.browser_view.borrow_mut() = None;
+            crate::shell::clear();
+            // Perfis de jogos ainda referenciados seguram o processo no estilo Chrome:
+            // sem soltá-los aqui, o `run_message_loop` não termina.
+            crate::profiles::release_all();
         }
 
         // No cef-rs, os métodos não implementados retornam 0 (no CEF em C++ o padrão é
@@ -136,11 +145,8 @@ wrap_window_delegate! {
         }
 
         fn can_close(&self, _window: Option<&mut Window>) -> i32 {
-            let browser = self.browser_view.borrow().as_ref().and_then(|view| view.browser());
-            match browser.and_then(|browser| browser.host()) {
-                Some(host) => host.try_close_browser(),
-                None => 1,
-            }
+            // Fecha o jogo manual aberto (se houver) e a Biblioteca.
+            crate::shell::close_all()
         }
     }
 }
@@ -151,7 +157,7 @@ impl AvengerWindowDelegate {
         if window.is_none_or(|window| is_window_fullscreen(window)) {
             return;
         }
-        let browser = self.browser_view.borrow().as_ref().and_then(|view| view.browser());
+        let browser = crate::shell::active_view().and_then(|view| view.browser());
         if let Some(host) = browser.and_then(|browser| browser.host())
             && host.is_fullscreen() != 0
         {
@@ -161,7 +167,7 @@ impl AvengerWindowDelegate {
 }
 
 wrap_browser_view_delegate! {
-    struct AvengerBrowserViewDelegate {}
+    pub struct AvengerBrowserViewDelegate {}
 
     impl ViewDelegate {}
 

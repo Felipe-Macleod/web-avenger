@@ -1,5 +1,5 @@
 use cef::*;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 const VK_ESCAPE: i32 = 0x1B;
 const VK_F1: i32 = 0x70;
@@ -8,6 +8,8 @@ const VK_F11: i32 = 0x7A;
 
 /// Se a página atual é um jogo do catálogo (entrou pela Biblioteca).
 static IN_GAME: AtomicBool = AtomicBool::new(false);
+/// Browsers abertos (Biblioteca + jogo manual, ver `shell`).
+static OPEN_BROWSERS: AtomicUsize = AtomicUsize::new(0);
 /// Se a tela cheia atual foi ligada pela opção "Abrir jogos em tela cheia".
 static AUTO_FULLSCREEN: AtomicBool = AtomicBool::new(false);
 
@@ -81,6 +83,10 @@ wrap_display_handler! {
 
     impl DisplayHandler {
         fn on_title_change(&self, browser: Option<&mut Browser>, title: Option<&CefString>) {
+            // Só o browser visível dá nome à janela (jogos ocultos vão para about:blank).
+            if browser.as_deref().is_some_and(|browser| !crate::shell::is_active(browser)) {
+                return;
+            }
             let Some(window) = window_for(browser) else {
                 return;
             };
@@ -216,8 +222,16 @@ wrap_life_span_handler! {
             1
         }
 
+        fn on_after_created(&self, _browser: Option<&mut Browser>) {
+            OPEN_BROWSERS.fetch_add(1, Ordering::Relaxed);
+        }
+
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
-            quit_message_loop();
+            // A Biblioteca e cada jogo manual têm browsers separados (ver `shell`); o app
+            // só sai quando o último fecha.
+            if OPEN_BROWSERS.fetch_sub(1, Ordering::Relaxed) <= 1 {
+                quit_message_loop();
+            }
         }
     }
 }
@@ -228,18 +242,37 @@ wrap_request_handler! {
     impl RequestHandler {
         fn on_before_browse(
             &self,
-            _browser: Option<&mut Browser>,
+            browser: Option<&mut Browser>,
             frame: Option<&mut Frame>,
             request: Option<&mut Request>,
             _user_gesture: i32,
             _is_redirect: i32,
         ) -> i32 {
-            // Retorno do login OAuth do itch.io: concluído aqui, a navegação é cancelada.
-            let (Some(frame), Some(request)) = (frame, request) else {
+            let (Some(browser), Some(frame), Some(request)) = (browser, frame, request) else {
                 return 0;
             };
             let url = CefStringUtf16::from(&request.url()).to_string();
-            crate::itch::handle_navigation(frame, &url) as i32
+            // Retorno do login OAuth do itch.io: concluído aqui, a navegação é cancelada.
+            if crate::itch::handle_navigation(frame, &url) {
+                return 1;
+            }
+            if frame.is_main() == 0 {
+                return 0;
+            }
+
+            if crate::shell::is_game_browser(browser) {
+                // F1 (ou qualquer volta à Biblioteca) no browser de um jogo manual:
+                // a Biblioteca vive no perfil principal, em outro browser.
+                if crate::library::is_library_url(&url) {
+                    post_task(ThreadId::UI, Some(&mut crate::shell::ShowLibraryTask::new()));
+                    return 1;
+                }
+            } else if let Some(game) = crate::profiles::manual_game_for(&url) {
+                // Jogo manual: abre num browser com o perfil próprio do jogo.
+                post_task(ThreadId::UI, Some(&mut crate::shell::OpenGameTask::new(game, url)));
+                return 1;
+            }
+            0
         }
     }
 }

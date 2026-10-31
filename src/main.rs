@@ -7,6 +7,8 @@ mod itch;
 mod library;
 mod native_pads;
 mod page_info;
+mod profiles;
+mod shell;
 mod renderer;
 mod settings;
 
@@ -15,6 +17,11 @@ use std::sync::OnceLock;
 
 /// URL `file://` da Biblioteca, gerada uma vez no processo principal.
 static LIBRARY_URL: OnceLock<String> = OnceLock::new();
+
+/// Raiz dos dados do Chromium (`root_cache_path`): `~/.local/share/web-avenger`.
+pub fn data_dir() -> std::path::PathBuf {
+    dirs::data_dir().unwrap_or_else(std::env::temp_dir).join("web-avenger")
+}
 
 pub fn library_url() -> &'static str {
     LIBRARY_URL.get().map(String::as_str).unwrap_or("about:blank")
@@ -52,9 +59,7 @@ fn main() {
         Err(err) => eprintln!("[web-avenger] falha ao gerar a Biblioteca: {err}"),
     }
 
-    let data_dir = dirs::data_dir()
-        .unwrap_or_else(std::env::temp_dir)
-        .join("web-avenger");
+    let data_dir = data_dir();
     let profile_dir = data_dir.join("profile");
     let settings = Settings {
         no_sandbox: 1,
@@ -78,5 +83,6 @@ fn main() {
     }
 
     run_message_loop();
+    profiles::release_all();
     shutdown();
 }

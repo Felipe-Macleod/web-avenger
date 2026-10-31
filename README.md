@@ -37,6 +37,8 @@ Clique em **+ Adicionar jogo** na Biblioteca e informe a URL. O launcher lê a p
 
 Páginas do **itch.io** são reconhecidas sem chave de API: o nome, a capa e as tags vêm do `data.json` público da página, e a URL salva é a do jogo HTML5 (`html-classic.itch.zone/html/<upload>/…`, o mesmo que o "Run game" carrega), com a página do itch guardada como `homepage`. Jogos só para download não têm versão de navegador e ficam com a URL da página. O jogo é gravado em `~/.config/web-avenger/games.json`.
 
+Para alterar um jogo, clique com o botão direito no card (ou use a tecla Menu / Shift+F10) e escolha **Editar jogo**. No modal de edição, **Remover jogo** (clique duas vezes para confirmar) tira o jogo da Biblioteca; jogos do catálogo padrão ficam marcados com `"removed": true` no seu `games.json`. Editar um jogo do catálogo padrão grava uma cópia em `~/.config/web-avenger/games.json`, que prevalece sobre a original.
+
 O catálogo padrão fica em `games.json` (embutido no binário). Também dá para editar `~/.config/web-avenger/games.json` à mão para adicionar ou sobrescrever jogos:
 
 ```json

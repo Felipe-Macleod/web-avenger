@@ -125,6 +125,9 @@
   }
   .action:hover { border-color: var(--accent); }
   .action.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .action.danger { color: #f87171; border-color: color-mix(in srgb, #f87171 40%, transparent); }
+  .action.danger:hover { border-color: #f87171; }
+  .action.danger.confirm { background: #dc2626; border-color: #dc2626; color: #fff; }
   .action:disabled { opacity: .45; cursor: default; border-color: var(--border); }
   .row .actions { display: flex; gap: 8px; flex-wrap: wrap; }
   #mapper-select { max-width: 280px; }
@@ -162,6 +165,18 @@
   .hint-text { color: var(--muted); font-size: 13px; margin: 0; }
   .form-error { color: #f87171; font-size: 13px; margin: 0; }
   .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); }
+
+  /* Menu de contexto dos cards */
+  .context-menu {
+    position: fixed; z-index: 10; min-width: 180px; padding: 4px; display: flex; flex-direction: column;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .45);
+  }
+  .context-menu button {
+    font: inherit; font-size: 14px; text-align: left; color: var(--text); background: none; border: 0;
+    border-radius: 7px; padding: 8px 12px; cursor: pointer;
+  }
+  .context-menu button:hover, .context-menu button:focus-visible { background: var(--accent); color: #fff; outline: none; }
 
   footer {
     padding: 12px 40px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border);
@@ -300,7 +315,7 @@
     </div>
   </form>
   <form id="game-form" hidden>
-    <h2>Adicionar jogo</h2>
+    <h2 id="game-form-title">Adicionar jogo</h2>
     <div class="fields">
       <label class="field"><span>Nome</span>
         <input name="name" required maxlength="120" placeholder="Ex.: Skate 3 Browser" autocomplete="off">
@@ -324,11 +339,15 @@
     </div>
     <div class="dialog-actions">
       <button class="action" type="button" id="game-back" style="margin-right:auto">Voltar</button>
+      <button class="action danger" type="button" id="game-remove" style="margin-right:auto" hidden>Remover jogo</button>
       <button class="action" type="button" data-close>Cancelar</button>
-      <button class="action primary" type="submit">Adicionar</button>
+      <button class="action primary" type="submit" id="game-submit">Adicionar</button>
     </div>
   </form>
 </dialog>
+<div class="context-menu" id="card-menu" role="menu" hidden>
+  <button role="menuitem" data-action="edit">Editar jogo</button>
+</div>
 <footer>
   <span><kbd>F1</kbd> Biblioteca</span>
   <span><kbd>F11</kbd> Tela cheia</span>
@@ -378,7 +397,9 @@
       ...(game.description ? [el("p", { textContent: game.description })] : []),
       tags,
     ]);
-    return el("a", { className: "card", href: game.url, title: game.url }, [thumb, info]);
+    const link = el("a", { className: "card", href: game.url, title: game.url }, [thumb, info]);
+    link.dataset.id = game.id;
+    return link;
   }
 
   function renderLibrary() {
@@ -412,7 +433,47 @@
   const urlNext = document.getElementById("url-next");
   const detectedHint = document.getElementById("detected-hint");
   const URL_HINT = urlStatus.textContent;
+  const gameFormTitle = document.getElementById("game-form-title");
+  const gameSubmit = document.getElementById("game-submit");
+  const gameBack = document.getElementById("game-back");
+  const gameRemove = document.getElementById("game-remove");
   let fetchId = 0;
+  let editingId = null; // id do jogo em edição; `null` = cadastro novo
+
+  function setEditing(id) {
+    editingId = id;
+    gameFormTitle.textContent = id ? "Editar jogo" : "Adicionar jogo";
+    gameSubmit.textContent = id ? "Salvar" : "Adicionar";
+    gameBack.hidden = Boolean(id);
+    gameRemove.hidden = !id;
+    resetRemove();
+  }
+
+  // Remover pede confirmação: o primeiro clique só arma o botão.
+  function resetRemove() {
+    gameRemove.classList.remove("confirm");
+    gameRemove.textContent = "Remover jogo";
+  }
+
+  gameRemove.addEventListener("click", () => {
+    if (!gameRemove.classList.contains("confirm")) {
+      gameRemove.classList.add("confirm");
+      gameRemove.textContent = "Confirmar remoção";
+      return;
+    }
+    try {
+      window.avengerRemoveGame(editingId);
+    } catch (err) {
+      gameError.textContent = `Não foi possível remover: ${err.message ?? err}`;
+      gameError.hidden = false;
+      resetRemove();
+      return;
+    }
+    GAMES.splice(GAMES.findIndex((g) => g.id === editingId), 1);
+    gameDialog.close();
+    renderLibrary();
+  });
+  gameRemove.addEventListener("blur", resetRemove);
 
   // Etapa 1: só a URL. Etapa 2: o cadastro, já preenchido com os dados da página.
   function showStep(step) {
@@ -455,6 +516,7 @@
 
   document.getElementById("add-game").addEventListener("click", () => {
     fetchId++;
+    setEditing(null);
     urlForm.reset();
     gameForm.reset();
     setFetching(false);
@@ -492,7 +554,7 @@
     gameForm.name.select();
   });
 
-  document.getElementById("game-back").addEventListener("click", () => {
+  gameBack.addEventListener("click", () => {
     urlForm.url.value = gameForm.homepage.value || gameForm.url.value;
     gameError.hidden = true;
     showStep(1);
@@ -516,9 +578,15 @@
       thumbnail: value("thumbnail") || null,
       tags: value("tags").split(",").map((t) => t.trim()).filter(Boolean),
     };
+    let saved;
     try {
-      const saved = JSON.parse(window.avengerAddGame(JSON.stringify(game)));
-      GAMES.push(saved);
+      if (editingId) {
+        saved = JSON.parse(window.avengerUpdateGame(JSON.stringify({ ...game, id: editingId })));
+        GAMES[GAMES.findIndex((g) => g.id === editingId)] = saved;
+      } else {
+        saved = JSON.parse(window.avengerAddGame(JSON.stringify(game)));
+        GAMES.push(saved);
+      }
     } catch (err) {
       gameError.textContent = `Não foi possível salvar: ${err.message ?? err}`;
       gameError.hidden = false;
@@ -527,11 +595,82 @@
     gameDialog.close();
     search.value = "";
     renderLibrary();
-    const added = grid.lastElementChild;
-    added.classList.add("new");
-    added.scrollIntoView({ behavior: "smooth", block: "center" });
-    added.focus();
+    const changed = grid.querySelector(`[data-id="${CSS.escape(saved.id)}"]`);
+    changed.classList.add("new");
+    changed.scrollIntoView({ behavior: "smooth", block: "center" });
+    changed.focus();
   });
+
+  function openEditor(game) {
+    fetchId++;
+    setEditing(game.id);
+    gameForm.reset();
+    gameForm.name.value = game.name;
+    gameForm.url.value = game.url;
+    gameForm.homepage.value = game.homepage ?? "";
+    gameForm.thumbnail.value = game.thumbnail ?? "";
+    gameForm.description.value = game.description ?? "";
+    gameForm.tags.value = game.tags.join(", ");
+    detectedHint.hidden = !game.homepage;
+    detectedHint.textContent = game.homepage ? `Página do jogo: ${game.homepage}` : "";
+    gameError.hidden = true;
+    updatePreview();
+    gameDialog.showModal();
+    showStep(2);
+  }
+
+  // ---- Menu de contexto dos cards (botão direito, tecla Menu ou Shift+F10) ----
+  const cardMenu = document.getElementById("card-menu");
+  const menuItems = [...cardMenu.querySelectorAll("[role=menuitem]")];
+  let menuGame = null;
+
+  function openMenu(game, x, y) {
+    menuGame = game;
+    cardMenu.hidden = false;
+    // Mantém o menu dentro da janela.
+    const { width, height } = cardMenu.getBoundingClientRect();
+    cardMenu.style.left = `${Math.min(x, innerWidth - width - 8)}px`;
+    cardMenu.style.top = `${Math.min(y, innerHeight - height - 8)}px`;
+    menuItems[0].focus();
+  }
+
+  function closeMenu() {
+    if (cardMenu.hidden) return;
+    cardMenu.hidden = true;
+    menuGame = null;
+  }
+
+  grid.addEventListener("contextmenu", (event) => {
+    const link = event.target.closest(".card");
+    if (!link) return;
+    event.preventDefault(); // também evita o menu nativo do Chromium
+    const game = GAMES.find((g) => g.id === link.dataset.id);
+    if (!game) return;
+    // Pelo teclado o evento não tem posição: abre junto ao card.
+    const fromKeyboard = event.clientX === 0 && event.clientY === 0;
+    const rect = link.getBoundingClientRect();
+    openMenu(game, fromKeyboard ? rect.left + 16 : event.clientX, fromKeyboard ? rect.top + 16 : event.clientY);
+  });
+
+  cardMenu.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-action]")?.dataset.action;
+    const game = menuGame;
+    closeMenu();
+    if (action === "edit" && game) openEditor(game);
+  });
+  cardMenu.addEventListener("keydown", (event) => {
+    const i = menuItems.indexOf(document.activeElement);
+    if (event.key === "ArrowDown") menuItems[(i + 1) % menuItems.length].focus();
+    else if (event.key === "ArrowUp") menuItems[(i - 1 + menuItems.length) % menuItems.length].focus();
+    else return;
+    event.preventDefault();
+  });
+  document.addEventListener("pointerdown", (event) => { if (!cardMenu.contains(event.target)) closeMenu(); }, true);
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeMenu(); });
+  addEventListener("scroll", closeMenu, true);
+  addEventListener("resize", closeMenu);
+  addEventListener("blur", closeMenu);
+  tabs.forEach((tab) => tab.addEventListener("click", closeMenu));
 
   // ---- Configurações ----
   // `avengerSettings` e `avengerSaveSettings` são injetados pelo launcher.

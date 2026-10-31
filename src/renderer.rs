@@ -81,7 +81,9 @@ wrap_render_process_handler! {
                 // A Biblioteca sempre recebe o tradutor (para o testador de controle)
                 // e a ponte para ler/salvar as configurações.
                 install_function(context, "avengerSaveSettings", &mut SaveSettingsHandler::new());
-                install_function(context, "avengerAddGame", &mut AddGameHandler::new());
+                install_function(context, "avengerAddGame", &mut SaveGameHandler::new(false));
+                install_function(context, "avengerUpdateGame", &mut SaveGameHandler::new(true));
+                install_function(context, "avengerRemoveGame", &mut RemoveGameHandler::new());
                 install_function(context, "avengerFetchPageInfo", &mut FetchPageInfoHandler::new());
                 let json = serde_json::to_string(&settings).unwrap_or_default();
                 eval(context, &format!("window.avengerSettings = {json};"));
@@ -217,14 +219,17 @@ fn string_argument(arguments: Option<&[Option<V8Value>]>) -> Result<String, Stri
         .and_then(|args| args.first().cloned().flatten())
         .filter(|arg| arg.is_string() != 0)
         .map(|arg| CefStringUtf16::from(&arg.string_value()).to_string())
-        .ok_or_else(|| "esperado um JSON (string)".to_string())
+        .ok_or_else(|| "esperado uma string".to_string())
 }
 
 wrap_v8_handler! {
-    struct AddGameHandler;
+    struct SaveGameHandler {
+        // `false`: `avengerAddGame` (gera o `id`); `true`: `avengerUpdateGame`.
+        update: bool,
+    }
 
     impl V8Handler {
-        /// `avengerAddGame(json: string) -> string` (o jogo salvo, com `id`)
+        /// `avengerAddGame(json)` / `avengerUpdateGame(json)` -> string (o jogo salvo, com `id`)
         fn execute(
             &self,
             _name: Option<&CefString>,
@@ -235,7 +240,14 @@ wrap_v8_handler! {
         ) -> i32 {
             let result = string_argument(arguments)
                 .and_then(|json| serde_json::from_str::<catalog::Game>(&json).map_err(|e| e.to_string()))
-                .and_then(|game| catalog::add_user_game(game).map_err(|e| e.to_string()))
+                .and_then(|game| {
+                    let saved = if self.update {
+                        catalog::update_user_game(game)
+                    } else {
+                        catalog::add_user_game(game)
+                    };
+                    saved.map_err(|e| e.to_string())
+                })
                 .and_then(|game| {
                     // Regera o arquivo da Biblioteca para o jogo continuar lá no F1/F5.
                     library::write(&catalog::load()).map_err(|e| e.to_string())?;
@@ -246,6 +258,40 @@ wrap_v8_handler! {
                 Ok(json) => {
                     if let Some(retval) = retval {
                         *retval = v8_value_create_string(Some(&CefString::from(json.as_str())));
+                    }
+                }
+                Err(err) => {
+                    if let Some(exception) = exception {
+                        *exception = CefString::from(err.as_str());
+                    }
+                }
+            }
+            1
+        }
+    }
+}
+
+wrap_v8_handler! {
+    struct RemoveGameHandler;
+
+    impl V8Handler {
+        /// `avengerRemoveGame(id: string) -> boolean`
+        fn execute(
+            &self,
+            _name: Option<&CefString>,
+            _object: Option<&mut V8Value>,
+            arguments: Option<&[Option<V8Value>]>,
+            retval: Option<&mut Option<V8Value>>,
+            exception: Option<&mut CefString>,
+        ) -> i32 {
+            let result = string_argument(arguments)
+                .and_then(|id| catalog::remove_user_game(&id).map_err(|e| e.to_string()))
+                .and_then(|()| library::write(&catalog::load()).map(|_| ()).map_err(|e| e.to_string()));
+
+            match result {
+                Ok(()) => {
+                    if let Some(retval) = retval {
+                        *retval = v8_value_create_bool(1);
                     }
                 }
                 Err(err) => {

@@ -1,6 +1,6 @@
 //! Código que roda no processo de renderização (um por página).
 
-use crate::{audio, catalog, itch, library, native_pads, page_info, settings};
+use crate::{audio, catalog, itch, library, native_pads, page_info, playtime, settings};
 use cef::*;
 use std::{cell::RefCell, collections::HashMap};
 
@@ -84,6 +84,7 @@ wrap_render_process_handler! {
                 install_function(context, "avengerAddGame", &mut SaveGameHandler::new(false));
                 install_function(context, "avengerUpdateGame", &mut SaveGameHandler::new(true));
                 install_function(context, "avengerRemoveGame", &mut RemoveGameHandler::new());
+                install_function(context, "avengerStats", &mut StatsHandler::new());
                 install_function(
                     context,
                     "avengerFetchPageInfo",
@@ -349,6 +350,28 @@ wrap_v8_handler! {
                         *exception = CefString::from(err.as_str());
                     }
                 }
+            }
+            1
+        }
+    }
+}
+
+wrap_v8_handler! {
+    struct StatsHandler;
+
+    impl V8Handler {
+        /// `avengerStats() -> string`: JSON `{id: {seconds, last_played}}` (ver `playtime`).
+        fn execute(
+            &self,
+            _name: Option<&CefString>,
+            _object: Option<&mut V8Value>,
+            _arguments: Option<&[Option<V8Value>]>,
+            retval: Option<&mut Option<V8Value>>,
+            _exception: Option<&mut CefString>,
+        ) -> i32 {
+            let json = serde_json::to_string(&playtime::load()).unwrap_or_default();
+            if let Some(retval) = retval {
+                *retval = v8_value_create_string(Some(&CefString::from(json.as_str())));
             }
             1
         }

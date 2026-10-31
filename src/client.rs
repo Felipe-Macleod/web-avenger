@@ -109,6 +109,9 @@ wrap_display_handler! {
                 return;
             }
             let url = url.map(CefString::to_string).unwrap_or_default();
+            if let Some(browser) = browser.as_deref() {
+                crate::playtime::on_navigation(browser.identifier(), &url);
+            }
             let Some(window) = window_for(browser) else {
                 return;
             };
@@ -226,7 +229,10 @@ wrap_life_span_handler! {
             OPEN_BROWSERS.fetch_add(1, Ordering::Relaxed);
         }
 
-        fn on_before_close(&self, _browser: Option<&mut Browser>) {
+        fn on_before_close(&self, browser: Option<&mut Browser>) {
+            if let Some(browser) = browser {
+                crate::playtime::on_browser_closed(browser.identifier());
+            }
             // A Biblioteca e cada jogo manual têm browsers separados (ver `shell`); o app
             // só sai quando o último fecha.
             if OPEN_BROWSERS.fetch_sub(1, Ordering::Relaxed) <= 1 {

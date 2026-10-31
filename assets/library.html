@@ -95,6 +95,8 @@
   .info h2 { margin: 0; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .info p { margin: 0; color: var(--muted); font-size: 13px; }
   .grid .info p { display: none; }
+  .info .meta { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #sort { padding: 6px 8px; font-size: 13px; }
   .tags { display: flex; gap: 6px; flex-wrap: wrap; }
   .grid .tags { flex-wrap: nowrap; overflow: hidden; }
   .tag {
@@ -267,6 +269,11 @@
   <span class="count" id="count"></span>
   <div class="toolbar-actions" id="library-actions">
     <input type="search" id="search" placeholder="Buscar jogo ou tag..." autofocus>
+    <select id="sort" aria-label="Ordenar por" title="Ordenar por">
+      <option value="recent">Recentes</option>
+      <option value="name">Nome</option>
+      <option value="playtime">Tempo de jogo</option>
+    </select>
     <div class="view-toggle" role="group" aria-label="Visualização">
       <button data-mode="grid" title="Grade" aria-label="Grade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
       <button data-mode="list" title="Lista" aria-label="Lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
@@ -501,18 +508,56 @@
     return svg;
   }
 
-  // Jogos abertos recentemente (id → horário), mais novos primeiro.
+  // Tempo de jogo e última vez jogado, medidos pelo launcher (`avengerStats`, ver
+  // src/playtime.rs): `{id: {seconds, last_played}}`, com `last_played` em segundos Unix.
+  let STATS = {};
+  try { STATS = JSON.parse(window.avengerStats()); } catch {}
+  try { localStorage.removeItem("recent"); } catch {} // lista antiga de Recentes
+  const statsOf = (game) => STATS[game.id] ?? { seconds: 0, last_played: 0 };
+
+  // Jogos já jogados, do mais recente ao mais antigo.
   function recentGames() {
-    let recent = [];
-    try { recent = JSON.parse(load(localStorage, "recent") ?? "[]"); } catch {}
-    return recent.map(({ id }) => visibleGames().find((g) => g.id === id)).filter(Boolean);
+    return visibleGames()
+      .filter((game) => statsOf(game).last_played > 0)
+      .sort((a, b) => statsOf(b).last_played - statsOf(a).last_played);
   }
-  function recordRecent(id) {
-    let recent = [];
-    try { recent = JSON.parse(load(localStorage, "recent") ?? "[]"); } catch {}
-    recent = [{ id, at: Date.now() }, ...recent.filter((r) => r.id !== id)].slice(0, 20);
-    store(localStorage, "recent", JSON.stringify(recent));
+
+  function formatPlaytime(seconds) {
+    if (seconds < 60) return "< 1 min";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    return minutes % 60 ? `${hours} h ${minutes % 60} min` : `${hours} h`;
   }
+
+  const relativeTime = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
+  function formatLastPlayed(unixSeconds) {
+    const diff = Date.now() / 1000 - unixSeconds;
+    if (diff < 60) return "agora há pouco";
+    for (const [unit, size] of [["year", 31536000], ["month", 2592000], ["day", 86400], ["hour", 3600], ["minute", 60]]) {
+      if (diff >= size) return relativeTime.format(-Math.floor(diff / size), unit);
+    }
+    return "agora há pouco";
+  }
+
+  function metaLine(game) {
+    const { seconds, last_played } = statsOf(game);
+    return last_played ? `${formatPlaytime(seconds)} · ${formatLastPlayed(last_played)}` : "Nunca jogado";
+  }
+
+  // Ordenação escolhida na barra superior (salva por visualizador).
+  const sortSelect = document.getElementById("sort");
+  const SORTS = {
+    // Último jogado ou recém adicionado; sem nenhuma data, mantém a ordem do catálogo.
+    recent: (a, b) => Math.max(statsOf(b).last_played, b.added_at ?? 0) - Math.max(statsOf(a).last_played, a.added_at ?? 0),
+    name: (a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
+    playtime: (a, b) => statsOf(b).seconds - statsOf(a).seconds,
+  };
+  sortSelect.value = SORTS[load(localStorage, "sortBy")] ? load(localStorage, "sortBy") : "recent";
+  sortSelect.addEventListener("change", () => {
+    store(localStorage, "sortBy", sortSelect.value);
+    renderLibrary();
+  });
 
   function allTags() {
     const counts = new Map();
@@ -607,6 +652,7 @@
     const info = el("div", { className: "info" }, [
       el("h2", { textContent: game.name, title: game.name }),
       ...(game.description ? [el("p", { textContent: game.description })] : []),
+      el("span", { className: "meta", textContent: metaLine(game) }),
       tags,
     ]);
     const link = el("a", { className: "card", href: game.url, title: game.url }, [thumb, info]);
@@ -619,8 +665,9 @@
     if (currentView === "settings") return;
     const q = search.value.trim().toLowerCase();
     const inView = gamesForView(currentView);
-    const games = inView.filter((g) =>
-      !q || g.name.toLowerCase().includes(q) || g.tags.some((t) => t.toLowerCase().includes(q)));
+    const games = inView
+      .filter((g) => !q || g.name.toLowerCase().includes(q) || g.tags.some((t) => t.toLowerCase().includes(q)))
+      .sort(SORTS[sortSelect.value]);
     const empty = currentView === "recent" && !inView.length
       ? "Nenhum jogo aberto recentemente."
       : "Nenhum jogo encontrado.";
@@ -632,11 +679,6 @@
       : `${inView.length} jogo${inView.length === 1 ? "" : "s"}`;
   }
   search.addEventListener("input", renderLibrary);
-  // Abrir um jogo (o clique segue o link) o coloca em "Recentes".
-  grid.addEventListener("click", (event) => {
-    const link = event.target.closest(".card");
-    if (link) recordRecent(link.dataset.id);
-  });
 
   // ---- Cadastro de jogo ----
   // `avengerAddGame` é injetado pelo launcher e grava em ~/.config/web-avenger/games.json.

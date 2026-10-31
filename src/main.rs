@@ -7,6 +7,7 @@ mod itch;
 mod library;
 mod native_pads;
 mod page_info;
+mod playtime;
 mod profiles;
 mod shell;
 mod renderer;

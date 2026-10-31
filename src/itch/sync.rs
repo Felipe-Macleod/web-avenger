@@ -321,6 +321,7 @@ fn import(job: Shared, candidate: Candidate) {
                         removed: false,
                         source: Some(catalog::ITCH_SOURCE.into()),
                         itch_id,
+                        added_at: None, // preenchido em `catalog::add_itch_games`
                     };
                     let mut job = job.borrow_mut();
                     job.report.imported += 1;

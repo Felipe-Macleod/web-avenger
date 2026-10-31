@@ -31,6 +31,9 @@ pub struct Game {
     /// Id do jogo no itch.io, para a sincronização não importar o mesmo jogo duas vezes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub itch_id: Option<u64>,
+    /// Quando o jogo foi adicionado (segundos Unix), para ordenar por "recém adicionado".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub added_at: Option<u64>,
 }
 
 /// Origem dos jogos importados do itch.io (ver `src/itch/sync.rs`).
@@ -126,13 +129,17 @@ fn config_path(path: Option<PathBuf>) -> io::Result<PathBuf> {
     path.ok_or_else(|| io::Error::other("diretório de configuração não encontrado"))
 }
 
-/// Gera `id`s únicos (pelo nome) para jogos novos; `taken` inclui os removidos, cujos
-/// ids não são reaproveitados.
+/// Gera `id`s únicos (pelo nome) para jogos novos e marca quando foram adicionados;
+/// `taken` inclui os removidos, cujos ids não são reaproveitados.
 fn assign_ids(games: Vec<Game>) -> Vec<Game> {
     let mut taken: Vec<String> = load_all().into_iter().map(|game| game.id).collect();
+    let added_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
     games
         .into_iter()
         .map(|mut game| {
+            game.added_at.get_or_insert(added_at);
             let base = slugify(&game.name);
             game.id = base.clone();
             let mut suffix = 2;

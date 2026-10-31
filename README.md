@@ -58,6 +58,12 @@ O catálogo padrão fica em `games.json` (embutido no binário). Também dá par
 
 Entradas com o mesmo `id` de um jogo embutido substituem a original.
 
+## Tempo de jogo e ordenação
+
+O launcher mede o tempo que cada jogo fica aberto (de entrar no jogo até voltar para a Biblioteca ou fechar a janela) e a última vez jogado. Os cards mostram, por exemplo, "3 h 12 min · há 2 dias"; **Recentes** na sidebar lista os jogos já jogados, do mais recente ao mais antigo. Os dados ficam em `~/.local/share/web-avenger/playtime.json` (gravados também a cada minuto, para não perder tempo se o app cair).
+
+O seletor na barra superior ordena a Biblioteca por **Recentes** (último jogado ou recém adicionado), **Nome** ou **Tempo de jogo**.
+
 ## Configurações
 
 O item **Configurações** da sidebar (salva em `~/.config/web-avenger/settings.json`) tem:

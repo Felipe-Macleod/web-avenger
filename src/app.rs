@@ -121,6 +121,7 @@ wrap_window_delegate! {
         }
 
         fn on_window_destroyed(&self, _window: Option<&mut Window>) {
+            crate::playtime::end_all();
             *self.browser_view.borrow_mut() = None;
             crate::shell::clear();
             // Perfis de jogos ainda referenciados seguram o processo no estilo Chrome:

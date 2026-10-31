@@ -217,6 +217,18 @@
   .form-error { color: #f87171; font-size: 13px; margin: 0; }
   .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); }
 
+  /* Apps conectados */
+  .app-row { align-items: flex-start; flex-wrap: wrap; }
+  .app-row .text { min-width: 200px; }
+  .app-logo {
+    flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px;
+    background: #fa5c5c; color: #fff; font-weight: 700; font-size: 13px; letter-spacing: .3px;
+  }
+  .app-row .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+  .row .text .app-message { display: block; margin-top: 6px; color: var(--text); }
+  .row .text .app-message.ok { color: var(--ok); }
+  .row .text .app-message.error { color: #f87171; }
+
   /* Menu de contexto dos cards */
   .context-menu {
     position: fixed; z-index: 10; min-width: 180px; padding: 4px; display: flex; flex-direction: column;
@@ -293,6 +305,23 @@
       <div class="row">
         <div class="text"><span>As mudanças valem para jogos abertos a partir de agora.</span></div>
         <span class="saved" id="saved-games">✓ Salvo</span>
+      </div>
+    </section>
+
+    <section class="panel" id="connected-apps">
+      <h2>Apps conectados</h2>
+      <div class="row app-row">
+        <div class="app-logo" aria-hidden="true">itch</div>
+        <div class="text">
+          <strong>itch.io</strong>
+          <span id="itch-status">Verificando…</span>
+          <span class="app-message" id="itch-message" hidden></span>
+        </div>
+        <div class="actions">
+          <button class="action danger" id="itch-disconnect" hidden>Desconectar</button>
+          <button class="action" id="itch-sync" hidden>Sincronizar</button>
+          <button class="action primary" id="itch-connect" hidden>Conectar</button>
+        </div>
       </div>
     </section>
 
@@ -427,7 +456,7 @@
   const load = (storage, key) => { try { return storage.getItem(key); } catch { return null; } };
 
   // ---- Navegação (sidebar) ----
-  // Views: "all", "recent", "source:manual", "tag:<tag>" ou "settings".
+  // Views: "all", "recent", "source:manual", "source:itch.io", "tag:<tag>" ou "settings".
   const sidebarNav = document.getElementById("sidebar-nav");
   const settingsItem = document.querySelector(".sidebar-footer [data-view=settings]");
   const viewTitle = document.getElementById("view-title");
@@ -440,6 +469,7 @@
     all: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
     recent: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     source: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+    itch: '<path d="M4 9.5 6 4h12l2 5.5"/><path d="M4 9.5c0 1.4 1.1 2.5 2.7 2.5S9.3 10.9 9.3 9.5c0 1.4 1.2 2.5 2.7 2.5s2.7-1.1 2.7-2.5c0 1.4 1.1 2.5 2.6 2.5S20 10.9 20 9.5"/><path d="M5 12v8h14v-8"/>',
     tag: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
   };
   function icon(name) {
@@ -476,12 +506,15 @@
   function gamesForView(view) {
     if (view === "recent") return recentGames();
     if (view.startsWith("tag:")) return GAMES.filter((g) => g.tags.includes(view.slice(4)));
-    return GAMES; // "all" e "source:manual" (por enquanto toda fonte é manual)
+    if (view === "source:manual") return GAMES.filter((g) => !g.source);
+    if (view.startsWith("source:")) return GAMES.filter((g) => g.source === view.slice(7));
+    return GAMES;
   }
 
   function viewName(view) {
     if (view === "recent") return "Recentes";
     if (view === "source:manual") return "Manual";
+    if (view.startsWith("source:")) return view.slice(7);
     if (view === "settings") return "Configurações";
     if (view.startsWith("tag:")) return view.slice(4);
     return "Todos os jogos";
@@ -506,7 +539,12 @@
         navItem("all", "all", "Todos os jogos", GAMES.length),
         navItem("recent", "recent", "Recentes", recentGames().length),
       ]),
-      section("Fontes", [navItem("source:manual", "source", "Manual", GAMES.length)]),
+      section("Fontes", [
+        navItem("source:manual", "source", "Manual", GAMES.filter((g) => !g.source).length),
+        ...(GAMES.some((g) => g.source === "itch.io")
+          ? [navItem("source:itch.io", "itch", "itch.io", GAMES.filter((g) => g.source === "itch.io").length)]
+          : []),
+      ]),
       ...(tags.length ? [section("Categorias", tags.map(([tag, n]) => navItem(`tag:${tag}`, "tag", tag, n)))] : []),
     );
     settingsItem.setAttribute("aria-current", currentView === "settings");
@@ -1090,8 +1128,128 @@
   document.getElementById("wizard-skip").addEventListener("click", () => wizard && commitStep(null));
   document.getElementById("wizard-cancel").addEventListener("click", endWizard);
 
+  // ---- Apps conectados: itch.io ----
+  // `avengerItch(ação, callback)` é injetado pelo launcher; o token fica só no processo
+  // principal (cifrado, com a chave no chaveiro do sistema).
+  const itchStatus = document.getElementById("itch-status");
+  const itchMessage = document.getElementById("itch-message");
+  const itchConnect = document.getElementById("itch-connect");
+  const itchSync = document.getElementById("itch-sync");
+  const itchDisconnect = document.getElementById("itch-disconnect");
+
+  function itchCall(action) {
+    return new Promise((resolve) => {
+      try {
+        window.avengerItch(action, (json) => {
+          try { resolve(JSON.parse(json)); } catch { resolve({ ok: false, error: "resposta inválida" }); }
+        });
+      } catch (err) {
+        resolve({ ok: false, error: String(err.message ?? err) });
+      }
+    });
+  }
+
+  function showItchMessage(text, kind) {
+    itchMessage.textContent = text;
+    itchMessage.className = `app-message ${kind}`;
+    itchMessage.hidden = !text;
+  }
+
+  async function refreshItch() {
+    const status = await itchCall("status");
+    const user = status.user ? status.user.display_name || status.user.username : null;
+    // Conexão antiga sem algum escopo que o launcher passou a pedir: autorizar de novo.
+    const needsReconnect = status.connected && status.missing_scopes?.length > 0;
+    itchStatus.textContent = !status.client_id
+      ? "Defina ITCH_CLIENT_ID para conectar (veja o README)."
+      : needsReconnect ? `Conectado como ${user ?? "usuário do itch.io"}, mas falta autorizar o acesso às coleções. Clique em Reconectar.`
+      : status.connected ? `Conectado como ${user ?? "usuário do itch.io"}.`
+      : status.error ? `Conexão salva inválida: ${status.error}`
+      : "Não conectado. Importa os jogos de navegador comprados e das suas coleções.";
+    itchConnect.hidden = status.connected && !needsReconnect;
+    itchConnect.textContent = needsReconnect ? "Reconectar" : "Conectar";
+    itchConnect.disabled = !status.client_id;
+    itchSync.hidden = !status.connected || needsReconnect;
+    itchDisconnect.hidden = !status.connected && !status.error;
+    resetItchDisconnect();
+  }
+
+  function resetItchDisconnect() {
+    itchDisconnect.classList.remove("confirm");
+    itchDisconnect.textContent = "Desconectar";
+  }
+
+  itchConnect.addEventListener("click", async () => {
+    itchConnect.disabled = true;
+    const result = await itchCall("connect");
+    if (result.ok) {
+      location.href = result.url; // login e autorização no próprio app
+    } else {
+      showItchMessage(result.error, "error");
+      itchConnect.disabled = false;
+    }
+  });
+
+  itchSync.addEventListener("click", async () => {
+    itchSync.disabled = true;
+    itchSync.textContent = "Sincronizando…";
+    showItchMessage("Lendo seus jogos e coleções no itch.io…", "");
+    const result = await itchCall("sync");
+    itchSync.disabled = false;
+    itchSync.textContent = "Sincronizar";
+    if (!result.ok) return showItchMessage(result.error, "error");
+
+    const r = result.report;
+    const parts = [
+      `${r.imported} jogo${r.imported === 1 ? "" : "s"} importado${r.imported === 1 ? "" : "s"}`,
+      `${r.existing} já na Biblioteca`,
+      `${r.not_web} só para download`,
+    ];
+    if (r.failed.length) parts.push(`sem versão de navegador encontrada: ${r.failed.join(", ")}`);
+    if (r.skipped_collections?.length) parts.push(`coleções não lidas: ${r.skipped_collections.join(", ")}`);
+    const text = `${parts.join(" · ")}.`;
+    if (r.imported) {
+      // A Biblioteca foi regerada com os jogos novos: recarrega e mantém a mensagem.
+      store(sessionStorage, "itchMessage", text);
+      location.reload();
+    } else {
+      showItchMessage(text, "ok");
+    }
+  });
+
+  itchDisconnect.addEventListener("click", async () => {
+    if (!itchDisconnect.classList.contains("confirm")) {
+      itchDisconnect.classList.add("confirm");
+      itchDisconnect.textContent = "Confirmar";
+      return;
+    }
+    const result = await itchCall("disconnect");
+    showItchMessage(result.ok ? "Desconectado. Os jogos importados continuam na Biblioteca." : result.error,
+      result.ok ? "ok" : "error");
+    refreshItch();
+  });
+  itchDisconnect.addEventListener("blur", resetItchDisconnect);
+
+  // Retorno do login (`#itch=ok&user=…` ou `#itch=erro&msg=…`) e mensagem pós-sincronização.
+  const itchReturn = new URLSearchParams(location.hash.slice(1));
+  const pendingItchMessage = load(sessionStorage, "itchMessage");
+  if (itchReturn.has("itch")) {
+    history.replaceState(null, "", location.pathname);
+    showItchMessage(
+      itchReturn.get("itch") === "ok"
+        ? `Conectado${itchReturn.get("user") ? ` como ${itchReturn.get("user")}` : ""}. Clique em Sincronizar para importar seus jogos.`
+        : itchReturn.get("msg") ?? "Não foi possível conectar.",
+      itchReturn.get("itch") === "ok" ? "ok" : "error");
+  } else if (pendingItchMessage) {
+    showItchMessage(pendingItchMessage, "ok");
+  }
+  try { sessionStorage.removeItem("itchMessage"); } catch {}
+  refreshItch();
+
   // Restaura a view aberta antes de ir para um jogo e voltar com F1.
-  selectView(load(sessionStorage, "view") ?? "all");
+  const showApps = itchReturn.has("itch") || pendingItchMessage;
+  selectView(showApps ? "settings" : load(sessionStorage, "view") ?? "all");
+  if (showApps) document.getElementById("connected-apps").scrollIntoView({ block: "center" });
 </script>
 </body>
 </html>

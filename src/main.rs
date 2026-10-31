@@ -2,6 +2,8 @@ mod app;
 mod audio;
 mod catalog;
 mod client;
+mod http;
+mod itch;
 mod library;
 mod native_pads;
 mod page_info;
@@ -34,6 +36,13 @@ fn main() {
     let code = execute_process(Some(args.as_main_args()), Some(&mut app), std::ptr::null_mut());
     if !is_browser_process {
         std::process::exit(code);
+    }
+
+    // Versões anteriores gravavam os jogos do itch.io no `games.json`.
+    match catalog::migrate_itch_games() {
+        Ok(0) => {}
+        Ok(moved) => eprintln!("[web-avenger] {moved} jogo(s) do itch.io movido(s) para itch-games.json"),
+        Err(err) => eprintln!("[web-avenger] falha ao migrar os jogos do itch.io: {err}"),
     }
 
     match library::write(&catalog::load()) {

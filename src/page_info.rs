@@ -4,17 +4,14 @@
 //! processo de renderização pede ao processo principal, que baixa a página com um
 //! `CefURLRequest` (fora das regras de CORS) e devolve o resultado por mensagem.
 
+use crate::http;
 use cef::*;
 use serde::Serialize;
-use std::sync::{Arc, Mutex};
 
 /// Renderização → principal: `[id, url]`.
 pub const REQUEST_MESSAGE: &str = "avenger.page-info.request";
 /// Principal → renderização: `[id, json]`.
 pub const RESPONSE_MESSAGE: &str = "avenger.page-info.response";
-
-/// O suficiente para o `<head>` de qualquer página.
-const MAX_BYTES: usize = 512 * 1024;
 
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct PageInfo {
@@ -37,43 +34,44 @@ pub fn handle_request(frame: &mut Frame, message: &ProcessMessage) -> bool {
     };
     let id = args.int(0);
     let url = CefStringUtf16::from(&args.string(1)).to_string();
-
-    let mut client = PageInfoClient::new(id, url.clone(), frame.clone(), Arc::default());
-    if !start_request(&url, &mut client) {
-        respond(frame, id, &PageInfo::default());
-    }
+    let frame = frame.clone();
+    fetch(url, false, Box::new(move |info| respond(&frame, id, &info)));
     true
 }
 
-fn start_request(url: &str, client: &mut UrlrequestClient) -> bool {
-    let Some(mut request) = request_create() else {
-        return false;
-    };
-    request.set_url(Some(&CefString::from(url)));
-    request.set_method(Some(&CefString::from("GET")));
-    urlrequest_create(Some(&mut request), Some(client), None).is_some()
-}
-
-/// Corpo da resposta, se a requisição terminou com sucesso.
-fn finished_body(request: Option<&mut Urlrequest>, body: &Mutex<Vec<u8>>) -> Option<String> {
-    let success = request.is_some_and(|request| {
-        request.request_status() == UrlrequestStatus::SUCCESS
-            && request.response().is_some_and(|response| (200..400).contains(&response.status()))
-    });
-    let body = body.lock().ok()?;
-    success.then(|| String::from_utf8_lossy(&body).into_owned())
-}
-
-fn append_chunk(body: &Mutex<Vec<u8>>, data: *const u8, data_length: usize) {
-    if data.is_null() {
-        return;
-    }
-    // SAFETY: o CEF garante `data_length` bytes válidos durante a chamada.
-    let chunk = unsafe { std::slice::from_raw_parts(data, data_length) };
-    if let Ok(mut body) = body.lock() {
-        let room = MAX_BYTES.saturating_sub(body.len());
-        body.extend_from_slice(&chunk[..chunk.len().min(room)]);
-    }
+/// Baixa a página e extrai as informações; no itch.io completa com o `data.json`.
+/// `cookies`: usa a sessão do perfil (ex.: jogos pagos do itch.io com login).
+pub fn fetch(url: String, cookies: bool, callback: Box<dyn FnOnce(PageInfo)>) {
+    let mut request = http::Request::get(&url);
+    request.cookies = cookies;
+    let page_url = url.clone();
+    http::fetch(
+        request,
+        Box::new(move |result| {
+            let html = match result {
+                Ok(response) if (200..400).contains(&response.status) => response.text(),
+                _ => return callback(PageInfo::default()),
+            };
+            let info = parse(&html, &page_url);
+            if !is_itch(&html, &page_url) {
+                return callback(info);
+            }
+            // Nome limpo e tags vêm do `data.json` público da página.
+            let data_url = itch_data_url(&page_url);
+            let mut request = http::Request::get(&data_url);
+            request.cookies = cookies;
+            http::fetch(
+                request,
+                Box::new(move |result| {
+                    let mut info = info;
+                    if let Some(response) = result.ok().filter(|response| response.ok()) {
+                        merge_itch_data(&mut info, &response.text());
+                    }
+                    callback(info);
+                }),
+            );
+        }),
+    );
 }
 
 fn respond(frame: &Frame, id: i32, info: &PageInfo) {
@@ -86,60 +84,6 @@ fn respond(frame: &Frame, id: i32, info: &PageInfo) {
         args.set_string(1, Some(&CefString::from(json.as_str())));
     }
     frame.send_process_message(ProcessId::RENDERER, Some(&mut message));
-}
-
-wrap_urlrequest_client! {
-    struct PageInfoClient {
-        id: i32,
-        url: String,
-        frame: Frame,
-        body: Arc<Mutex<Vec<u8>>>,
-    }
-
-    impl UrlrequestClient {
-        fn on_download_data(&self, _request: Option<&mut Urlrequest>, data: *const u8, data_length: usize) {
-            append_chunk(&self.body, data, data_length);
-        }
-
-        fn on_request_complete(&self, request: Option<&mut Urlrequest>) {
-            let Some(html) = finished_body(request, &self.body) else {
-                respond(&self.frame, self.id, &PageInfo::default());
-                return;
-            };
-            let info = parse(&html, &self.url);
-            // No itch.io, completa com o `data.json` público da página (nome limpo e tags).
-            if is_itch(&html, &self.url) {
-                let mut client = ItchDataClient::new(self.id, self.frame.clone(), info.clone(), Arc::default());
-                if start_request(&itch_data_url(&self.url), &mut client) {
-                    return;
-                }
-            }
-            respond(&self.frame, self.id, &info);
-        }
-    }
-}
-
-wrap_urlrequest_client! {
-    struct ItchDataClient {
-        id: i32,
-        frame: Frame,
-        info: PageInfo,
-        body: Arc<Mutex<Vec<u8>>>,
-    }
-
-    impl UrlrequestClient {
-        fn on_download_data(&self, _request: Option<&mut Urlrequest>, data: *const u8, data_length: usize) {
-            append_chunk(&self.body, data, data_length);
-        }
-
-        fn on_request_complete(&self, request: Option<&mut Urlrequest>) {
-            let mut info = self.info.clone();
-            if let Some(json) = finished_body(request, &self.body) {
-                merge_itch_data(&mut info, &json);
-            }
-            respond(&self.frame, self.id, &info);
-        }
-    }
 }
 
 /// Extrai título, descrição e imagem de capa do HTML.

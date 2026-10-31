@@ -1,12 +1,12 @@
 //! Código que roda no processo de renderização (um por página).
 
-use crate::{audio, catalog, library, native_pads, page_info, settings};
+use crate::{audio, catalog, itch, library, native_pads, page_info, settings};
 use cef::*;
 use std::{cell::RefCell, collections::HashMap};
 
 thread_local! {
-    /// Pedidos de `avengerFetchPageInfo` aguardando resposta do processo principal.
-    static PENDING_PAGE_INFO: RefCell<(i32, HashMap<i32, (V8Context, V8Value)>)> =
+    /// Pedidos ao processo principal (`avengerFetchPageInfo`, `avengerItch`) aguardando resposta.
+    static PENDING_CALLBACKS: RefCell<(i32, HashMap<i32, (V8Context, V8Value)>)> =
         RefCell::new((0, HashMap::new()));
 }
 
@@ -84,7 +84,16 @@ wrap_render_process_handler! {
                 install_function(context, "avengerAddGame", &mut SaveGameHandler::new(false));
                 install_function(context, "avengerUpdateGame", &mut SaveGameHandler::new(true));
                 install_function(context, "avengerRemoveGame", &mut RemoveGameHandler::new());
-                install_function(context, "avengerFetchPageInfo", &mut FetchPageInfoHandler::new());
+                install_function(
+                    context,
+                    "avengerFetchPageInfo",
+                    &mut MainProcessCallHandler::new(page_info::REQUEST_MESSAGE, "avengerFetchPageInfo(url, callback)"),
+                );
+                install_function(
+                    context,
+                    "avengerItch",
+                    &mut MainProcessCallHandler::new(itch::REQUEST_MESSAGE, "avengerItch(ação, callback)"),
+                );
                 let json = serde_json::to_string(&settings).unwrap_or_default();
                 eval(context, &format!("window.avengerSettings = {json};"));
             }
@@ -101,17 +110,18 @@ wrap_render_process_handler! {
             let Some(message) = message else {
                 return 0;
             };
-            if CefStringUtf16::from(&message.name()).to_string() != page_info::RESPONSE_MESSAGE {
+            let name = CefStringUtf16::from(&message.name()).to_string();
+            if name != page_info::RESPONSE_MESSAGE && name != itch::RESPONSE_MESSAGE {
                 return 0;
             }
             let Some(args) = message.argument_list() else {
                 return 1;
             };
-            let pending = PENDING_PAGE_INFO.with(|pending| pending.borrow_mut().1.remove(&args.int(0)));
+            let pending = PENDING_CALLBACKS.with(|pending| pending.borrow_mut().1.remove(&args.int(0)));
             let Some((context, callback)) = pending else {
                 return 1;
             };
-            // A Biblioteca pode ter navegado para outro lugar enquanto a página baixava.
+            // A Biblioteca pode ter navegado para outro lugar enquanto esperava.
             if context.is_valid() != 0 && context.enter() != 0 {
                 let json = v8_value_create_string(Some(&CefString::from(&args.string(1))));
                 callback.execute_function(None, Some(&[json]));
@@ -169,10 +179,14 @@ wrap_v8_handler! {
 }
 
 wrap_v8_handler! {
-    struct FetchPageInfoHandler;
+    struct MainProcessCallHandler {
+        request_message: &'static str,
+        usage: &'static str,
+    }
 
     impl V8Handler {
-        /// `avengerFetchPageInfo(url: string, callback: (json: string) => void)`
+        /// `função(argumento: string, callback: (json: string) => void)`: envia
+        /// `[id, argumento]` ao processo principal e chama o callback com a resposta.
         fn execute(
             &self,
             _name: Option<&CefString>,
@@ -181,23 +195,23 @@ wrap_v8_handler! {
             _retval: Option<&mut Option<V8Value>>,
             exception: Option<&mut CefString>,
         ) -> i32 {
-            let url = string_argument(arguments);
+            let argument = string_argument(arguments);
             let callback = arguments
                 .and_then(|args| args.get(1).cloned().flatten())
                 .filter(|arg| arg.is_function() != 0);
             let context = v8_context_get_current_context();
             let frame = context.as_ref().and_then(|context| context.frame());
 
-            let (Ok(url), Some(callback), Some(context), Some(frame)) = (url, callback, context, frame) else {
+            let (Ok(argument), Some(callback), Some(context), Some(frame)) = (argument, callback, context, frame) else {
                 if let Some(exception) = exception {
-                    *exception = CefString::from("uso: avengerFetchPageInfo(url, callback)");
+                    *exception = CefString::from(format!("uso: {}", self.usage).as_str());
                 }
                 return 1;
             };
-            let Some(mut message) = process_message_create(Some(&CefString::from(page_info::REQUEST_MESSAGE))) else {
+            let Some(mut message) = process_message_create(Some(&CefString::from(self.request_message))) else {
                 return 1;
             };
-            let id = PENDING_PAGE_INFO.with(|pending| {
+            let id = PENDING_CALLBACKS.with(|pending| {
                 let (next_id, map) = &mut *pending.borrow_mut();
                 *next_id += 1;
                 map.insert(*next_id, (context, callback));
@@ -205,7 +219,7 @@ wrap_v8_handler! {
             });
             if let Some(args) = message.argument_list() {
                 args.set_int(0, id);
-                args.set_string(1, Some(&CefString::from(url.as_str())));
+                args.set_string(1, Some(&CefString::from(argument.as_str())));
             }
             frame.send_process_message(ProcessId::BROWSER, Some(&mut message));
             1

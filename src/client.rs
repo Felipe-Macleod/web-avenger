@@ -6,10 +6,23 @@ const VK_F1: i32 = 0x70;
 const VK_F5: i32 = 0x74;
 const VK_F11: i32 = 0x7A;
 
-/// Se a página atual é um jogo (e não a Biblioteca).
+/// Se a página atual é um jogo do catálogo (entrou pela Biblioteca).
 static IN_GAME: AtomicBool = AtomicBool::new(false);
 /// Se a tela cheia atual foi ligada pela opção "Abrir jogos em tela cheia".
 static AUTO_FULLSCREEN: AtomicBool = AtomicBool::new(false);
+
+/// `scheme://host[:porta]` de uma URL.
+fn origin(url: &str) -> &str {
+    let after_scheme = url.find("://").map_or(0, |i| i + 3);
+    let end = url[after_scheme..].find(['/', '?', '#']).map_or(url.len(), |i| i + after_scheme);
+    &url[..end]
+}
+
+/// Se a URL é de um jogo da Biblioteca (mesma origem da URL cadastrada).
+fn is_catalog_game(url: &str) -> bool {
+    let origin = origin(url);
+    crate::catalog::load().iter().any(|game| self::origin(&game.url).eq_ignore_ascii_case(origin))
+}
 
 fn window_for(browser: Option<&mut Browser>) -> Option<Window> {
     browser_view_get_for_browser(browser)?.window()
@@ -41,6 +54,10 @@ wrap_client! {
             Some(AvengerLifeSpanHandler::new())
         }
 
+        fn request_handler(&self) -> Option<RequestHandler> {
+            Some(AvengerRequestHandler::new())
+        }
+
         fn on_process_message_received(
             &self,
             _browser: Option<&mut Browser>,
@@ -49,7 +66,10 @@ wrap_client! {
             message: Option<&mut ProcessMessage>,
         ) -> i32 {
             match (frame, message) {
-                (Some(frame), Some(message)) => crate::page_info::handle_request(frame, message) as i32,
+                (Some(frame), Some(message)) => {
+                    (crate::page_info::handle_request(frame, message)
+                        || crate::itch::handle_request(frame, message)) as i32
+                }
                 _ => 0,
             }
         }
@@ -83,22 +103,23 @@ wrap_display_handler! {
                 return;
             }
             let url = url.map(CefString::to_string).unwrap_or_default();
-            let in_game = !crate::library::is_library_url(&url);
-            if IN_GAME.swap(in_game, Ordering::Relaxed) == in_game {
-                return; // navegação dentro do jogo (ou da Biblioteca)
-            }
             let Some(window) = window_for(browser) else {
                 return;
             };
 
-            if in_game {
+            if crate::library::is_library_url(&url) {
+                IN_GAME.store(false, Ordering::Relaxed);
+                // De volta à Biblioteca: desfaz só a tela cheia que a opção ligou.
+                if AUTO_FULLSCREEN.swap(false, Ordering::Relaxed) && is_window_fullscreen(&window) {
+                    window.set_fullscreen(0);
+                }
+            } else if is_catalog_game(&url) && !IN_GAME.swap(true, Ordering::Relaxed) {
+                // Entrou num jogo do catálogo. Outras páginas (ex.: login do itch.io em
+                // Apps conectados) e a navegação dentro do jogo não mexem na tela cheia.
                 if crate::settings::load().fullscreen_games && !is_window_fullscreen(&window) {
                     AUTO_FULLSCREEN.store(true, Ordering::Relaxed);
                     window.set_fullscreen(1);
                 }
-            } else if AUTO_FULLSCREEN.swap(false, Ordering::Relaxed) && is_window_fullscreen(&window) {
-                // De volta à Biblioteca: desfaz só a tela cheia que a opção ligou.
-                window.set_fullscreen(0);
             }
         }
 
@@ -198,5 +219,39 @@ wrap_life_span_handler! {
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
             quit_message_loop();
         }
+    }
+}
+
+wrap_request_handler! {
+    struct AvengerRequestHandler;
+
+    impl RequestHandler {
+        fn on_before_browse(
+            &self,
+            _browser: Option<&mut Browser>,
+            frame: Option<&mut Frame>,
+            request: Option<&mut Request>,
+            _user_gesture: i32,
+            _is_redirect: i32,
+        ) -> i32 {
+            // Retorno do login OAuth do itch.io: concluído aqui, a navegação é cancelada.
+            let (Some(frame), Some(request)) = (frame, request) else {
+                return 0;
+            };
+            let url = CefStringUtf16::from(&request.url()).to_string();
+            crate::itch::handle_navigation(frame, &url) as i32
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::origin;
+
+    #[test]
+    fn origem_da_url() {
+        assert_eq!(origin("https://skate.aaddpp.lol"), "https://skate.aaddpp.lol");
+        assert_eq!(origin("https://html-classic.itch.zone/html/1/index.html?v=2"), "https://html-classic.itch.zone");
+        assert_eq!(origin("http://127.0.0.1:8080#x"), "http://127.0.0.1:8080");
     }
 }

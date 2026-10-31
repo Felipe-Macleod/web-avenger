@@ -31,5 +31,21 @@ pub fn write(games: &[Game]) -> io::Result<String> {
 
 /// Se a URL de um frame é a Biblioteca (usado no processo de renderização).
 pub fn is_library_url(url: &str) -> bool {
-    url.starts_with("file://") && url.ends_with(&format!("/web-avenger/{FILE_NAME}"))
+    // Ignora `?…`/`#…` (ex.: `#itch=ok` no retorno do login do itch.io).
+    let path = url.split(['?', '#']).next().unwrap_or(url);
+    path.starts_with("file://") && path.ends_with(&format!("/web-avenger/{FILE_NAME}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reconhece_a_biblioteca_com_hash() {
+        let url = "file:///home/x/.cache/web-avenger/library.html";
+        assert!(is_library_url(url));
+        assert!(is_library_url(&format!("{url}#itch=ok&user=a")));
+        assert!(!is_library_url("https://exemplo.com/web-avenger/library.html"));
+        assert!(!is_library_url("file:///tmp/outra.html#/web-avenger/library.html"));
+    }
 }

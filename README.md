@@ -71,6 +71,30 @@ O item **Configurações** da sidebar (salva em `~/.config/web-avenger/settings.
 
 As mudanças valem para jogos abertos depois da alteração.
 
+## itch.io (Apps conectados)
+
+Em **Configurações → Apps conectados**, o botão **Conectar** liga sua conta do itch.io por OAuth (authorization code + PKCE, sem client secret) e **Sincronizar** importa os jogos **de navegador** que você comprou ou tem nas suas coleções. Eles aparecem em **Fontes → itch.io** na sidebar. Sincronizar de novo só acrescenta jogos novos: não duplica, não desfaz suas edições e não traz de volta jogos que você removeu.
+
+### Configuração (uma vez)
+
+1. Registre um app OAuth em <https://itch.io/user/settings/oauth-apps> com a redirect URI exata:
+   ```
+   http://127.0.0.1/web-avenger/oauth/callback
+   ```
+   Nada escuta nesse endereço: o launcher intercepta o retorno dentro da própria janela.
+2. Defina o `client_id` gerado em `ITCH_CLIENT_ID`, de um destes jeitos:
+   - no arquivo `.env` na raiz do projeto (veja `.env.example`; o `.env` não é versionado) — o valor é **embutido no binário** no `cargo build`/`scripts/bundle.sh`;
+   - ou no ambiente ao rodar o app (`ITCH_CLIENT_ID=… ./web-avenger`), que tem prioridade sobre o embutido.
+
+### Onde fica o token
+
+- O login acontece dentro do app, então a sessão do itch.io fica no perfil (`~/.local/share/web-avenger/`) — isso também libera jogos pagos de navegador na sincronização.
+- O token OAuth fica em `~/.config/web-avenger/itch-token.enc` (permissão `0600`), **cifrado com ChaCha20-Poly1305**. A chave de 32 bytes fica no **chaveiro do sistema** (Secret Service: gnome-keyring, KWallet…), como `web-avenger` / `itch-token-key`. Sem chaveiro disponível a conexão é recusada.
+- O token só é lido pelo processo principal do launcher; nunca chega às páginas.
+- Os jogos importados ficam em um arquivo só deles, `~/.config/web-avenger/itch-games.json` (o `games.json` fica com os jogos manuais). Editar ou remover um jogo importado altera esse arquivo; os removidos ficam marcados com `"removed": true` para a sincronização não trazê-los de volta.
+- Os jogos comprados vêm da API (`/profile/owned-keys`). Os jogos de cada coleção são lidos da página da coleção (`itch.io/c/<id>`) com a sessão do app, porque o endpoint da API para isso exige o escopo `collection:view`, que o OAuth do itch.io não concede. Os jogos de navegador são reconhecidos pelo tipo do projeto (`html`) ou pelo selo "Play in browser".
+- **Desconectar** revoga o token no itch.io e apaga o arquivo e a chave do chaveiro. Os jogos importados continuam na Biblioteca.
+
 ## Áudio AAC
 
 As builds do CEF não trazem codecs proprietários, então o Chromium embutido não decodifica AAC — o formato que o Unity WebGL usa para áudio comprimido (jogos ficariam mudos). O launcher intercepta `decodeAudioData` para buffers MP4/M4A (`assets/audio-fallback.js`) e decodifica em Rust com o [Symphonia](https://github.com/pdeljanov/Symphonia) (`src/audio.rs`). MP3, Ogg/Vorbis e Opus continuam com o decodificador do Chromium.

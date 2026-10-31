@@ -16,15 +16,28 @@ pub enum ButtonLayout {
 ///
 /// Lidas pelo processo de renderização a cada página carregada, então mudanças
 /// valem para o próximo jogo aberto.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
+    /// Coloca a janela em tela cheia ao abrir um jogo pela Biblioteca.
+    pub fullscreen_games: bool,
     /// Apresenta controles não-Xbox aos jogos como um controle Xbox.
     pub input_translation: bool,
     pub button_layout: ButtonLayout,
     /// Mapeamentos manuais por controle (`"vendor:product"` → mapeamento).
     /// O formato é definido pelo tradutor em `assets/input-translation.js`.
     pub mappings: BTreeMap<String, serde_json::Value>,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            fullscreen_games: true,
+            input_translation: false,
+            button_layout: ButtonLayout::default(),
+            mappings: BTreeMap::new(),
+        }
+    }
 }
 
 fn path() -> Option<PathBuf> {

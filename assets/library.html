@@ -193,6 +193,21 @@
 
   <div id="settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
     <section class="panel">
+      <h2>Jogos</h2>
+      <div class="row">
+        <div class="text">
+          <strong>Abrir jogos em tela cheia</strong>
+          <span>A janela entra em tela cheia ao abrir um jogo e sai ao voltar para a Biblioteca (<kbd>F1</kbd>). <kbd>F11</kbd> alterna a qualquer momento.</span>
+        </div>
+        <span class="saved" id="saved-games">✓ Salvo</span>
+        <label class="switch">
+          <input type="checkbox" id="fullscreen-games" role="switch" aria-label="Abrir jogos em tela cheia">
+          <span class="track"></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="panel">
       <h2>Controle</h2>
       <div class="row">
         <div class="text">
@@ -492,14 +507,17 @@
 
   // ---- Configurações ----
   // `avengerSettings` e `avengerSaveSettings` são injetados pelo launcher.
-  const settings = Object.assign({ input_translation: false, button_layout: "position", mappings: {} }, window.avengerSettings);
+  const settings = Object.assign(
+    { fullscreen_games: true, input_translation: false, button_layout: "position", mappings: {} },
+    window.avengerSettings);
+  const fullscreenInput = document.getElementById("fullscreen-games");
   const translationInput = document.getElementById("input-translation");
   const layoutSelect = document.getElementById("button-layout");
   const layoutRow = document.getElementById("layout-row");
-  const saved = document.getElementById("saved");
   let savedTimer;
 
   function applySettings() {
+    fullscreenInput.checked = settings.fullscreen_games;
     translationInput.checked = settings.input_translation;
     layoutSelect.value = settings.button_layout;
     layoutRow.classList.toggle("disabled", !settings.input_translation);
@@ -510,8 +528,11 @@
     }
   }
 
-  function save() {
+  // `indicator`: o "✓ Salvo" do painel alterado.
+  function save(indicator = document.getElementById("saved")) {
     applySettings();
+    const saved = indicator;
+    for (const other of document.querySelectorAll(".saved.show")) other.classList.remove("show");
     try {
       window.avengerSaveSettings(JSON.stringify(settings));
       saved.textContent = "✓ Salvo";
@@ -523,6 +544,10 @@
     savedTimer = setTimeout(() => saved.classList.remove("show"), 1800);
   }
 
+  fullscreenInput.addEventListener("change", () => {
+    settings.fullscreen_games = fullscreenInput.checked;
+    save(document.getElementById("saved-games"));
+  });
   translationInput.addEventListener("change", () => { settings.input_translation = translationInput.checked; save(); });
   layoutSelect.addEventListener("change", () => { settings.button_layout = layoutSelect.value; save(); });
   applySettings();

@@ -1,9 +1,15 @@
 use cef::*;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 const VK_ESCAPE: i32 = 0x1B;
 const VK_F1: i32 = 0x70;
 const VK_F5: i32 = 0x74;
 const VK_F11: i32 = 0x7A;
+
+/// Se a página atual é um jogo (e não a Biblioteca).
+static IN_GAME: AtomicBool = AtomicBool::new(false);
+/// Se a tela cheia atual foi ligada pela opção "Abrir jogos em tela cheia".
+static AUTO_FULLSCREEN: AtomicBool = AtomicBool::new(false);
 
 fn window_for(browser: Option<&mut Browser>) -> Option<Window> {
     browser_view_get_for_browser(browser)?.window()
@@ -67,8 +73,41 @@ wrap_display_handler! {
             window.set_title(Some(&CefString::from(title.as_str())));
         }
 
+        fn on_address_change(
+            &self,
+            browser: Option<&mut Browser>,
+            frame: Option<&mut Frame>,
+            url: Option<&CefString>,
+        ) {
+            if frame.is_none_or(|frame| frame.is_main() == 0) {
+                return;
+            }
+            let url = url.map(CefString::to_string).unwrap_or_default();
+            let in_game = !crate::library::is_library_url(&url);
+            if IN_GAME.swap(in_game, Ordering::Relaxed) == in_game {
+                return; // navegação dentro do jogo (ou da Biblioteca)
+            }
+            let Some(window) = window_for(browser) else {
+                return;
+            };
+
+            if in_game {
+                if crate::settings::load().fullscreen_games && !is_window_fullscreen(&window) {
+                    AUTO_FULLSCREEN.store(true, Ordering::Relaxed);
+                    window.set_fullscreen(1);
+                }
+            } else if AUTO_FULLSCREEN.swap(false, Ordering::Relaxed) && is_window_fullscreen(&window) {
+                // De volta à Biblioteca: desfaz só a tela cheia que a opção ligou.
+                window.set_fullscreen(0);
+            }
+        }
+
         fn on_fullscreen_mode_change(&self, browser: Option<&mut Browser>, fullscreen: i32) {
-            // Fullscreen pedido pela própria página (Fullscreen API).
+            // Fullscreen pedido pela própria página (Fullscreen API). Se a janela já estava
+            // em tela cheia pela opção "Abrir jogos em tela cheia", continua nela.
+            if fullscreen == 0 && AUTO_FULLSCREEN.load(Ordering::Relaxed) && IN_GAME.load(Ordering::Relaxed) {
+                return;
+            }
             if let Some(window) = window_for(browser) {
                 window.set_fullscreen(fullscreen);
             }
@@ -117,6 +156,7 @@ wrap_keyboard_handler! {
                     }
                 }
                 VK_F11 => {
+                    AUTO_FULLSCREEN.store(false, Ordering::Relaxed);
                     if let Some(window) = window_for(Some(browser)) {
                         window.set_fullscreen((!is_window_fullscreen(&window)) as i32);
                     }

@@ -119,6 +119,22 @@ wrap_window_delegate! {
             *self.browser_view.borrow_mut() = None;
         }
 
+        // No cef-rs, os métodos não implementados retornam 0 (no CEF em C++ o padrão é
+        // `true`). Uma janela sem `can_resize` vai para o X com tamanho mínimo = máximo,
+        // e o Hyprland a trata como fixa: flutuante e na posição pedida pelo Chromium
+        // (canto do monitor principal), em vez de lado a lado no monitor focado.
+        fn can_resize(&self, _window: Option<&mut Window>) -> i32 {
+            1
+        }
+
+        fn can_maximize(&self, _window: Option<&mut Window>) -> i32 {
+            1
+        }
+
+        fn can_minimize(&self, _window: Option<&mut Window>) -> i32 {
+            1
+        }
+
         fn can_close(&self, _window: Option<&mut Window>) -> i32 {
             let browser = self.browser_view.borrow().as_ref().and_then(|view| view.browser());
             match browser.and_then(|browser| browser.host()) {

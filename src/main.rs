@@ -3,6 +3,7 @@ mod catalog;
 mod client;
 mod library;
 mod native_pads;
+mod page_info;
 mod renderer;
 mod settings;
 

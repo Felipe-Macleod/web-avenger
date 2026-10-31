@@ -33,7 +33,9 @@ Para depurar, use `./web-avenger --remote-debugging-port=9222` e abra `chrome://
 
 ## Adicionando jogos
 
-O catálogo padrão fica em `games.json` (embutido no binário). Para adicionar ou sobrescrever jogos sem recompilar, crie `~/.config/web-avenger/games.json`:
+Clique em **+ Adicionar jogo** na Biblioteca e informe a URL. O launcher lê a página (título, `og:image` e descrição) e abre o cadastro já preenchido para você revisar. O jogo é gravado em `~/.config/web-avenger/games.json`.
+
+O catálogo padrão fica em `games.json` (embutido no binário). Também dá para editar `~/.config/web-avenger/games.json` à mão para adicionar ou sobrescrever jogos:
 
 ```json
 [

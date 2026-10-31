@@ -6,6 +6,7 @@
 <style>
   :root {
     --bg: #0b0e14; --surface: #141925; --surface-2: #1c2333; --border: #262f42;
+    color-scheme: dark;
     --text: #e6e9f0; --muted: #8a93a6; --accent: #7c5cff; --accent-2: #22d3ee; --ok: #34d399;
   }
   * { box-sizing: border-box; }
@@ -31,8 +32,9 @@
   nav button:hover { color: var(--text); }
   nav button[aria-selected=true] { background: var(--surface-2); color: var(--text); }
   .count { color: var(--muted); font-size: 13px; }
+  .header-actions { margin-left: auto; display: flex; gap: 10px; width: min(520px, 100%); }
   input[type=search] {
-    margin-left: auto; width: min(360px, 100%); padding: 10px 14px; border-radius: 10px;
+    flex: 1; width: min(360px, 100%); padding: 10px 14px; border-radius: 10px;
     border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; outline: none;
   }
   input[type=search]:focus { border-color: var(--accent); }
@@ -132,6 +134,35 @@
   .wizard .progress { height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
   .wizard .progress i { display: block; height: 100%; background: var(--accent); transition: width .15s; }
 
+  /* Cadastro de jogo */
+  .card.new { border-color: var(--accent-2); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-2) 40%, transparent); }
+  dialog {
+    width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+  }
+  dialog::backdrop { background: rgba(5, 7, 12, .7); backdrop-filter: blur(3px); }
+  dialog form { display: flex; flex-direction: column; }
+  dialog h2 { margin: 0; padding: 16px 20px; font-size: 17px; border-bottom: 1px solid var(--border); }
+  .fields { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .field > span { font-weight: 600; }
+  .field small { color: var(--muted); font-weight: 400; }
+  .field input, .field textarea {
+    font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; outline: none; resize: vertical;
+  }
+  .field input:focus, .field textarea:focus { border-color: var(--accent); }
+  .field input:user-invalid { border-color: #f87171; }
+  .preview {
+    aspect-ratio: 16 / 9; height: 140px; align-self: flex-start; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface-2) center / cover no-repeat; display: grid; place-items: center;
+    color: var(--muted); font-size: 13px;
+  }
+  .hint-text { color: var(--muted); font-size: 13px; margin: 0; }
+  .form-error { color: #f87171; font-size: 13px; margin: 0; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); }
+
   footer {
     padding: 12px 40px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border);
     display: flex; gap: 18px; flex-wrap: wrap;
@@ -150,7 +181,10 @@
     <button role="tab" id="tab-settings" aria-controls="settings" aria-selected="false">Configurações</button>
   </nav>
   <span class="count" id="count"></span>
-  <input type="search" id="search" placeholder="Buscar jogo ou tag..." autofocus>
+  <div class="header-actions" id="library-actions">
+    <input type="search" id="search" placeholder="Buscar jogo ou tag..." autofocus>
+    <button class="action primary" id="add-game">+ Adicionar jogo</button>
+  </div>
 </header>
 <main>
   <div id="library" role="tabpanel" aria-labelledby="tab-library">
@@ -223,11 +257,53 @@
     </section>
   </div>
 </main>
+<dialog id="game-dialog" aria-labelledby="game-dialog-title">
+  <form id="url-form">
+    <h2 id="game-dialog-title">Adicionar jogo</h2>
+    <div class="fields">
+      <label class="field"><span>URL do jogo</span>
+        <input name="url" type="url" required pattern="(https?|file)://.+" placeholder="https://exemplo.com/jogo/" autocomplete="off">
+      </label>
+      <p class="hint-text" id="url-status">O nome e a capa são preenchidos a partir da página.</p>
+    </div>
+    <div class="dialog-actions">
+      <button class="action" type="button" data-close>Cancelar</button>
+      <button class="action primary" type="submit" id="url-next">Continuar</button>
+    </div>
+  </form>
+  <form id="game-form" hidden>
+    <h2>Adicionar jogo</h2>
+    <div class="fields">
+      <label class="field"><span>Nome</span>
+        <input name="name" required maxlength="120" placeholder="Ex.: Skate 3 Browser" autocomplete="off">
+      </label>
+      <label class="field"><span>URL do jogo</span>
+        <input name="url" type="url" required pattern="(https?|file)://.+" placeholder="https://exemplo.com/jogo/" autocomplete="off">
+      </label>
+      <label class="field"><span>Imagem de capa <small>(URL, opcional)</small></span>
+        <input name="thumbnail" type="url" pattern="(https?|file|data):.+" placeholder="https://exemplo.com/capa.jpg" autocomplete="off">
+      </label>
+      <div class="preview" id="game-preview">Sem capa</div>
+      <label class="field"><span>Descrição <small>(opcional)</small></span>
+        <textarea name="description" rows="3" maxlength="300"></textarea>
+      </label>
+      <label class="field"><span>Tags <small>(separadas por vírgula, opcional)</small></span>
+        <input name="tags" placeholder="wasm, webgpu, esporte" autocomplete="off">
+      </label>
+      <p class="form-error" id="game-error" hidden></p>
+    </div>
+    <div class="dialog-actions">
+      <button class="action" type="button" id="game-back" style="margin-right:auto">Voltar</button>
+      <button class="action" type="button" data-close>Cancelar</button>
+      <button class="action primary" type="submit">Adicionar</button>
+    </div>
+  </form>
+</dialog>
 <footer>
   <span><kbd>F1</kbd> Biblioteca</span>
   <span><kbd>F11</kbd> Tela cheia</span>
   <span><kbd>F5</kbd> Recarregar</span>
-  <span>Adicione jogos em <kbd>~/.config/web-avenger/games.json</kbd></span>
+  <span>Jogos adicionados ficam em <kbd>~/.config/web-avenger/games.json</kbd></span>
 </footer>
 <script>
   const GAMES = /*GAMES*/[];
@@ -242,6 +318,7 @@
   const tabs = [...document.querySelectorAll("[role=tab]")];
   const search = document.getElementById("search");
   const count = document.getElementById("count");
+  const libraryActions = document.getElementById("library-actions");
 
   function selectTab(tab) {
     for (const t of tabs) {
@@ -250,7 +327,7 @@
       document.getElementById(t.getAttribute("aria-controls")).hidden = !selected;
     }
     const isLibrary = tab.id === "tab-library";
-    search.hidden = count.hidden = !isLibrary;
+    libraryActions.hidden = count.hidden = !isLibrary;
     try { sessionStorage.setItem("tab", tab.id); } catch {}
     if (!isLibrary) startTester();
   }
@@ -282,6 +359,136 @@
   }
   search.addEventListener("input", renderLibrary);
   renderLibrary();
+
+  // ---- Cadastro de jogo ----
+  // `avengerAddGame` é injetado pelo launcher e grava em ~/.config/web-avenger/games.json.
+  const gameDialog = document.getElementById("game-dialog");
+  const gameForm = document.getElementById("game-form");
+  const gamePreview = document.getElementById("game-preview");
+  const gameError = document.getElementById("game-error");
+
+  function updatePreview() {
+    const url = gameForm.thumbnail.value.trim();
+    const valid = url && gameForm.thumbnail.checkValidity();
+    gamePreview.style.backgroundImage = valid ? `url("${encodeURI(url)}")` : "";
+    gamePreview.textContent = valid ? "" : "Sem capa";
+  }
+
+  const urlForm = document.getElementById("url-form");
+  const urlStatus = document.getElementById("url-status");
+  const urlNext = document.getElementById("url-next");
+  const URL_HINT = urlStatus.textContent;
+  let fetchId = 0;
+
+  // Etapa 1: só a URL. Etapa 2: o cadastro, já preenchido com os dados da página.
+  function showStep(step) {
+    urlForm.hidden = step !== 1;
+    gameForm.hidden = step !== 2;
+    (step === 1 ? urlForm.url : gameForm.name).focus();
+  }
+
+  function setFetching(fetching) {
+    urlForm.url.disabled = urlNext.disabled = fetching;
+    urlNext.textContent = fetching ? "Buscando…" : "Continuar";
+    urlStatus.textContent = fetching ? "Lendo o título da página…" : URL_HINT;
+  }
+
+  // `avengerFetchPageInfo` é injetado pelo launcher (baixa a página no processo principal).
+  function fetchPageInfo(url) {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve({ ok: false }), 10000);
+      try {
+        window.avengerFetchPageInfo(url, (json) => {
+          clearTimeout(timer);
+          try { resolve(JSON.parse(json)); } catch { resolve({ ok: false }); }
+        });
+      } catch {
+        clearTimeout(timer);
+        resolve({ ok: false });
+      }
+    });
+  }
+
+  // Sem título na página, sugere algo a partir do endereço (ex.: "exemplo.com").
+  function nameFromUrl(url) {
+    try {
+      const { hostname, pathname } = new URL(url);
+      return hostname.replace(/^www\./, "") || decodeURIComponent(pathname.split("/").filter(Boolean).pop() ?? "");
+    } catch {
+      return "";
+    }
+  }
+
+  document.getElementById("add-game").addEventListener("click", () => {
+    fetchId++;
+    urlForm.reset();
+    gameForm.reset();
+    setFetching(false);
+    gameError.hidden = true;
+    updatePreview();
+    gameDialog.showModal();
+    showStep(1);
+  });
+
+  urlForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const url = urlForm.url.value.trim();
+    const id = ++fetchId;
+    setFetching(true);
+    const info = await fetchPageInfo(url);
+    if (id !== fetchId || !gameDialog.open) return; // cancelado ou reaberto no meio
+    setFetching(false);
+
+    gameForm.url.value = url;
+    gameForm.name.value = info.title || nameFromUrl(url);
+    gameForm.description.value = info.description ?? "";
+    gameForm.thumbnail.value = info.thumbnail ?? "";
+    updatePreview();
+    gameError.textContent = "Não foi possível ler a página; preencha os dados manualmente.";
+    gameError.hidden = info.ok;
+    showStep(2);
+    gameForm.name.select();
+  });
+
+  document.getElementById("game-back").addEventListener("click", () => {
+    urlForm.url.value = gameForm.url.value;
+    gameError.hidden = true;
+    showStep(1);
+  });
+  for (const button of gameDialog.querySelectorAll("[data-close]")) {
+    button.addEventListener("click", () => gameDialog.close());
+  }
+  gameDialog.addEventListener("close", () => { fetchId++; });
+  // Clique no fundo escurecido (fora do formulário) fecha o modal.
+  gameDialog.addEventListener("click", (event) => { if (event.target === gameDialog) gameDialog.close(); });
+  gameForm.thumbnail.addEventListener("input", updatePreview);
+
+  gameForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const value = (name) => gameForm[name].value.trim();
+    const game = {
+      name: value("name"),
+      url: value("url"),
+      description: value("description"),
+      thumbnail: value("thumbnail") || null,
+      tags: value("tags").split(",").map((t) => t.trim()).filter(Boolean),
+    };
+    try {
+      const saved = JSON.parse(window.avengerAddGame(JSON.stringify(game)));
+      GAMES.push(saved);
+    } catch (err) {
+      gameError.textContent = `Não foi possível salvar: ${err.message ?? err}`;
+      gameError.hidden = false;
+      return;
+    }
+    gameDialog.close();
+    search.value = "";
+    renderLibrary();
+    const added = grid.lastElementChild;
+    added.classList.add("new");
+    added.scrollIntoView({ behavior: "smooth", block: "center" });
+    added.focus();
+  });
 
   // ---- Configurações ----
   // `avengerSettings` e `avengerSaveSettings` são injetados pelo launcher.

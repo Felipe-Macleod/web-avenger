@@ -1,7 +1,14 @@
 //! Código que roda no processo de renderização (um por página).
 
-use crate::{library, native_pads, settings};
+use crate::{catalog, library, native_pads, page_info, settings};
 use cef::*;
+use std::{cell::RefCell, collections::HashMap};
+
+thread_local! {
+    /// Pedidos de `avengerFetchPageInfo` aguardando resposta do processo principal.
+    static PENDING_PAGE_INFO: RefCell<(i32, HashMap<i32, (V8Context, V8Value)>)> =
+        RefCell::new((0, HashMap::new()));
+}
 
 const INPUT_TRANSLATION: &str = include_str!("../assets/input-translation.js");
 
@@ -64,10 +71,134 @@ wrap_render_process_handler! {
                 // A Biblioteca sempre recebe o tradutor (para o testador de controle)
                 // e a ponte para ler/salvar as configurações.
                 install_function(context, "avengerSaveSettings", &mut SaveSettingsHandler::new());
+                install_function(context, "avengerAddGame", &mut AddGameHandler::new());
+                install_function(context, "avengerFetchPageInfo", &mut FetchPageInfoHandler::new());
                 let json = serde_json::to_string(&settings).unwrap_or_default();
                 eval(context, &format!("window.avengerSettings = {json};"));
             }
             eval(context, &input_translation_script(&settings, is_library));
+        }
+
+        fn on_process_message_received(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut Frame>,
+            _source_process: ProcessId,
+            message: Option<&mut ProcessMessage>,
+        ) -> i32 {
+            let Some(message) = message else {
+                return 0;
+            };
+            if CefStringUtf16::from(&message.name()).to_string() != page_info::RESPONSE_MESSAGE {
+                return 0;
+            }
+            let Some(args) = message.argument_list() else {
+                return 1;
+            };
+            let pending = PENDING_PAGE_INFO.with(|pending| pending.borrow_mut().1.remove(&args.int(0)));
+            let Some((context, callback)) = pending else {
+                return 1;
+            };
+            // A Biblioteca pode ter navegado para outro lugar enquanto a página baixava.
+            if context.is_valid() != 0 && context.enter() != 0 {
+                let json = v8_value_create_string(Some(&CefString::from(&args.string(1))));
+                callback.execute_function(None, Some(&[json]));
+                context.exit();
+            }
+            1
+        }
+    }
+}
+
+wrap_v8_handler! {
+    struct FetchPageInfoHandler;
+
+    impl V8Handler {
+        /// `avengerFetchPageInfo(url: string, callback: (json: string) => void)`
+        fn execute(
+            &self,
+            _name: Option<&CefString>,
+            _object: Option<&mut V8Value>,
+            arguments: Option<&[Option<V8Value>]>,
+            _retval: Option<&mut Option<V8Value>>,
+            exception: Option<&mut CefString>,
+        ) -> i32 {
+            let url = string_argument(arguments);
+            let callback = arguments
+                .and_then(|args| args.get(1).cloned().flatten())
+                .filter(|arg| arg.is_function() != 0);
+            let context = v8_context_get_current_context();
+            let frame = context.as_ref().and_then(|context| context.frame());
+
+            let (Ok(url), Some(callback), Some(context), Some(frame)) = (url, callback, context, frame) else {
+                if let Some(exception) = exception {
+                    *exception = CefString::from("uso: avengerFetchPageInfo(url, callback)");
+                }
+                return 1;
+            };
+            let Some(mut message) = process_message_create(Some(&CefString::from(page_info::REQUEST_MESSAGE))) else {
+                return 1;
+            };
+            let id = PENDING_PAGE_INFO.with(|pending| {
+                let (next_id, map) = &mut *pending.borrow_mut();
+                *next_id += 1;
+                map.insert(*next_id, (context, callback));
+                *next_id
+            });
+            if let Some(args) = message.argument_list() {
+                args.set_int(0, id);
+                args.set_string(1, Some(&CefString::from(url.as_str())));
+            }
+            frame.send_process_message(ProcessId::BROWSER, Some(&mut message));
+            1
+        }
+    }
+}
+
+/// Primeiro argumento de uma função nativa, se for uma string.
+fn string_argument(arguments: Option<&[Option<V8Value>]>) -> Result<String, String> {
+    arguments
+        .and_then(|args| args.first().cloned().flatten())
+        .filter(|arg| arg.is_string() != 0)
+        .map(|arg| CefStringUtf16::from(&arg.string_value()).to_string())
+        .ok_or_else(|| "esperado um JSON (string)".to_string())
+}
+
+wrap_v8_handler! {
+    struct AddGameHandler;
+
+    impl V8Handler {
+        /// `avengerAddGame(json: string) -> string` (o jogo salvo, com `id`)
+        fn execute(
+            &self,
+            _name: Option<&CefString>,
+            _object: Option<&mut V8Value>,
+            arguments: Option<&[Option<V8Value>]>,
+            retval: Option<&mut Option<V8Value>>,
+            exception: Option<&mut CefString>,
+        ) -> i32 {
+            let result = string_argument(arguments)
+                .and_then(|json| serde_json::from_str::<catalog::Game>(&json).map_err(|e| e.to_string()))
+                .and_then(|game| catalog::add_user_game(game).map_err(|e| e.to_string()))
+                .and_then(|game| {
+                    // Regera o arquivo da Biblioteca para o jogo continuar lá no F1/F5.
+                    library::write(&catalog::load()).map_err(|e| e.to_string())?;
+                    serde_json::to_string(&game).map_err(|e| e.to_string())
+                });
+
+            match result {
+                Ok(json) => {
+                    if let Some(retval) = retval {
+                        *retval = v8_value_create_string(Some(&CefString::from(json.as_str())));
+                    }
+                }
+                Err(err) => {
+                    if let Some(exception) = exception {
+                        *exception = CefString::from(err.as_str());
+                    }
+                }
+            }
+            1
         }
     }
 }
@@ -85,13 +216,7 @@ wrap_v8_handler! {
             retval: Option<&mut Option<V8Value>>,
             exception: Option<&mut CefString>,
         ) -> i32 {
-            let json = arguments
-                .and_then(|args| args.first().cloned().flatten())
-                .filter(|arg| arg.is_string() != 0)
-                .map(|arg| CefStringUtf16::from(&arg.string_value()).to_string());
-
-            let result = json
-                .ok_or_else(|| "esperado um JSON (string)".to_string())
+            let result = string_argument(arguments)
                 .and_then(|json| {
                     serde_json::from_str::<settings::Settings>(&json).map_err(|e| e.to_string())
                 })

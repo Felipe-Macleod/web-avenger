@@ -34,6 +34,19 @@ wrap_client! {
         fn life_span_handler(&self) -> Option<LifeSpanHandler> {
             Some(AvengerLifeSpanHandler::new())
         }
+
+        fn on_process_message_received(
+            &self,
+            _browser: Option<&mut Browser>,
+            frame: Option<&mut Frame>,
+            _source_process: ProcessId,
+            message: Option<&mut ProcessMessage>,
+        ) -> i32 {
+            match (frame, message) {
+                (Some(frame), Some(message)) => crate::page_info::handle_request(frame, message) as i32,
+                _ => 0,
+            }
+        }
     }
 }
 

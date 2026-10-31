@@ -33,7 +33,9 @@ Para depurar, use `./web-avenger --remote-debugging-port=9222` e abra `chrome://
 
 ## Adicionando jogos
 
-Clique em **+ Adicionar jogo** na Biblioteca e informe a URL. O launcher lê a página (título, `og:image` e descrição) e abre o cadastro já preenchido para você revisar.
+A Biblioteca tem uma sidebar com filtros (Todos os jogos, Recentes, Fontes e Categorias pelas tags), busca e alternância entre grade e lista.
+
+Clique em **+ Adicionar** na Biblioteca e informe a URL. O launcher lê a página (título, `og:image` e descrição) e abre o cadastro já preenchido para você revisar.
 
 Páginas do **itch.io** são reconhecidas sem chave de API: o nome, a capa e as tags vêm do `data.json` público da página, e a URL salva é a do jogo HTML5 (`html-classic.itch.zone/html/<upload>/…`, o mesmo que o "Run game" carrega), com a página do itch guardada como `homepage`. Jogos só para download não têm versão de navegador e ficam com a URL da página. O jogo é gravado em `~/.config/web-avenger/games.json`.
 
@@ -58,7 +60,7 @@ Entradas com o mesmo `id` de um jogo embutido substituem a original.
 
 ## Configurações
 
-A aba **Configurações** da Biblioteca (salva em `~/.config/web-avenger/settings.json`) tem:
+O item **Configurações** da sidebar (salva em `~/.config/web-avenger/settings.json`) tem:
 
 - **Abrir jogos em tela cheia** (ligada por padrão): a janela entra em tela cheia ao abrir um jogo e sai ao voltar para a Biblioteca (`F1`). `F11` continua alternando manualmente.
 - **Maximizar o player do jogo** (ligada por padrão): players Unity WebGL (template padrão do Unity 2020+ e do UnityLoader antigo) ocupam a janela inteira mantendo a proporção, sem o rodapé (`assets/player-fit.js`).

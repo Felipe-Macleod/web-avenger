@@ -6,7 +6,7 @@
 <style>
   :root {
     --bg: #0b0e14; --surface: #141925; --surface-2: #1c2333; --border: #262f42;
-    --text: #e6e9f0; --muted: #8a93a6; --accent: #7c5cff; --accent-2: #22d3ee;
+    --text: #e6e9f0; --muted: #8a93a6; --accent: #7c5cff; --accent-2: #22d3ee; --ok: #34d399;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -23,16 +23,24 @@
     background: linear-gradient(90deg, var(--accent), var(--accent-2));
     -webkit-background-clip: text; color: transparent;
   }
+  nav { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+  nav button {
+    font: inherit; font-size: 14px; color: var(--muted); background: none; border: 0; border-radius: 7px;
+    padding: 6px 14px; cursor: pointer;
+  }
+  nav button:hover { color: var(--text); }
+  nav button[aria-selected=true] { background: var(--surface-2); color: var(--text); }
   .count { color: var(--muted); font-size: 13px; }
   input[type=search] {
     margin-left: auto; width: min(360px, 100%); padding: 10px 14px; border-radius: 10px;
     border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; outline: none;
   }
   input[type=search]:focus { border-color: var(--accent); }
-  main {
-    flex: 1; padding: 8px 40px 32px; display: grid; gap: 22px; align-content: start;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  }
+  main { flex: 1; padding: 8px 40px 32px; }
+  [hidden] { display: none !important; }
+
+  /* Biblioteca */
+  #grid { display: grid; gap: 22px; align-content: start; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
   .card {
     display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border);
     border-radius: 14px; overflow: hidden; color: inherit; text-decoration: none;
@@ -58,6 +66,72 @@
     color: var(--accent-2); border: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px;
   }
   .empty { color: var(--muted); grid-column: 1 / -1; text-align: center; padding: 48px 0; }
+
+  /* Configurações */
+  #settings { max-width: 760px; display: flex; flex-direction: column; gap: 22px; }
+  section.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  section.panel h2 { margin: 0; padding: 14px 20px; font-size: 15px; border-bottom: 1px solid var(--border); }
+  .row { display: flex; align-items: center; gap: 20px; padding: 16px 20px; }
+  .row + .row { border-top: 1px solid var(--border); }
+  .row .text { flex: 1; }
+  .row .text strong { display: block; font-weight: 600; }
+  .row .text span { color: var(--muted); font-size: 13px; }
+  .row.disabled { opacity: .45; pointer-events: none; }
+  .switch { position: relative; width: 44px; height: 24px; flex: none; }
+  .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  .switch .track { position: absolute; inset: 0; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); transition: background .15s; pointer-events: none; }
+  .switch .track::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--muted); transition: transform .15s, background .15s;
+  }
+  .switch input:checked + .track { background: var(--accent); border-color: var(--accent); }
+  .switch input:checked + .track::after { transform: translateX(20px); background: #fff; }
+  .switch input:focus-visible + .track { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+  select {
+    font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 10px; outline: none;
+  }
+  select:focus { border-color: var(--accent); }
+  .saved { color: var(--ok); font-size: 13px; opacity: 0; transition: opacity .2s; margin-left: auto; }
+  .saved.show { opacity: 1; }
+
+  /* Testador de controle */
+  .tester { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+  .tester .hint { color: var(--muted); font-size: 13px; margin: 0; }
+  .pad { border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .pad .ids { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12px; }
+  .pad .ids dt { color: var(--muted); }
+  .pad .ids dd { margin: 0; font-family: ui-monospace, monospace; word-break: break-all; }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); }
+  .badge.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+  .badge.warn { color: #fbbf24; border-color: color-mix(in srgb, #fbbf24 50%, transparent); }
+  .buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn {
+    min-width: 42px; text-align: center; font: 12px ui-monospace, monospace; padding: 4px 6px; border-radius: 6px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); transition: background .05s;
+  }
+  .btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .axes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; font: 12px ui-monospace, monospace; color: var(--muted); }
+  .axis { display: flex; flex-direction: column; gap: 4px; }
+  .axis .bar { height: 6px; background: var(--surface-2); border-radius: 3px; position: relative; overflow: hidden; }
+  .axis .bar i { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; margin-left: -1.5px; background: var(--accent-2); }
+
+  /* Mapeamento manual */
+  .action {
+    font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 14px; cursor: pointer;
+  }
+  .action:hover { border-color: var(--accent); }
+  .action.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .action:disabled { opacity: .45; cursor: default; border-color: var(--border); }
+  .row .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  #mapper-select { max-width: 280px; }
+  .wizard { padding: 18px 20px 20px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
+  .wizard .step { color: var(--muted); font-size: 13px; }
+  .wizard .prompt { font-size: 20px; font-weight: 600; }
+  .wizard .progress { height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+  .wizard .progress i { display: block; height: 100%; background: var(--accent); transition: width .15s; }
+
   footer {
     padding: 12px 40px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border);
     display: flex; gap: 18px; flex-wrap: wrap;
@@ -71,10 +145,84 @@
 <body>
 <header>
   <h1>Web <span>Avenger</span></h1>
+  <nav role="tablist">
+    <button role="tab" id="tab-library" aria-controls="library" aria-selected="true">Biblioteca</button>
+    <button role="tab" id="tab-settings" aria-controls="settings" aria-selected="false">Configurações</button>
+  </nav>
   <span class="count" id="count"></span>
   <input type="search" id="search" placeholder="Buscar jogo ou tag..." autofocus>
 </header>
-<main id="grid"></main>
+<main>
+  <div id="library" role="tabpanel" aria-labelledby="tab-library">
+    <div id="grid"></div>
+  </div>
+
+  <div id="settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+    <section class="panel">
+      <h2>Controle</h2>
+      <div class="row">
+        <div class="text">
+          <strong>Tradução de input</strong>
+          <span>Apresenta controles que não são de Xbox (ex.: Switch Pro Controller, DualSense) aos jogos como um controle de Xbox.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="input-translation" role="switch" aria-label="Tradução de input">
+          <span class="track"></span>
+        </label>
+      </div>
+      <div class="row" id="layout-row">
+        <div class="text">
+          <strong>Botões de controles Nintendo</strong>
+          <span>Por posição: o B (embaixo) age como o A do Xbox. Por rótulo: o A age como A.</span>
+        </div>
+        <select id="button-layout" aria-label="Botões de controles Nintendo">
+          <option value="position">Por posição</option>
+          <option value="label">Por rótulo</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="text"><span>As mudanças valem para jogos abertos a partir de agora.</span></div>
+        <span class="saved" id="saved">✓ Salvo</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Mapeamento manual</h2>
+      <div class="row">
+        <div class="text">
+          <strong>Controle</strong>
+          <span>Para controles genéricos que os jogos não reconhecem: aperte cada botão quando pedido. Vale com a tradução de input ligada.</span>
+        </div>
+        <select id="mapper-select" aria-label="Controle a mapear"></select>
+      </div>
+      <div class="row">
+        <div class="text"><span id="mapper-status">Conecte um controle e aperte um botão.</span></div>
+        <div class="actions">
+          <button class="action" id="mapper-remove" hidden>Remover mapeamento</button>
+          <button class="action primary" id="mapper-start" disabled>Mapear</button>
+        </div>
+      </div>
+      <div class="wizard" id="wizard" hidden>
+        <div class="progress"><i id="wizard-progress"></i></div>
+        <span class="step" id="wizard-step"></span>
+        <span class="prompt" id="wizard-prompt"></span>
+        <span class="step" id="wizard-detail"></span>
+        <div class="actions" style="display:flex; gap:8px">
+          <button class="action" id="wizard-skip">Pular</button>
+          <button class="action" id="wizard-cancel">Cancelar</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Testar controle</h2>
+      <div class="tester">
+        <p class="hint" id="tester-hint">Pressione qualquer botão do controle para detectá-lo.</p>
+        <div id="pads"></div>
+      </div>
+    </section>
+  </div>
+</main>
 <footer>
   <span><kbd>F1</kbd> Biblioteca</span>
   <span><kbd>F11</kbd> Tela cheia</span>
@@ -83,9 +231,6 @@
 </footer>
 <script>
   const GAMES = /*GAMES*/[];
-  const grid = document.getElementById("grid");
-  const search = document.getElementById("search");
-  const count = document.getElementById("count");
 
   function el(tag, props = {}, children = []) {
     const node = Object.assign(document.createElement(tag), props);
@@ -93,10 +238,31 @@
     return node;
   }
 
+  // ---- Abas ----
+  const tabs = [...document.querySelectorAll("[role=tab]")];
+  const search = document.getElementById("search");
+  const count = document.getElementById("count");
+
+  function selectTab(tab) {
+    for (const t of tabs) {
+      const selected = t === tab;
+      t.setAttribute("aria-selected", selected);
+      document.getElementById(t.getAttribute("aria-controls")).hidden = !selected;
+    }
+    const isLibrary = tab.id === "tab-library";
+    search.hidden = count.hidden = !isLibrary;
+    try { sessionStorage.setItem("tab", tab.id); } catch {}
+    if (!isLibrary) startTester();
+  }
+  tabs.forEach((tab) => tab.addEventListener("click", () => selectTab(tab)));
+
+  // ---- Biblioteca ----
+  const grid = document.getElementById("grid");
+
   function card(game) {
     const thumb = el("div", { className: "thumb" }, [el("span", { className: "play", textContent: "▶ Jogar" })]);
     if (game.thumbnail) thumb.style.backgroundImage = `url("${encodeURI(game.thumbnail)}")`;
-    const tags = el("div", { className: "tags" }, game.tags.map(t => el("span", { className: "tag", textContent: t })));
+    const tags = el("div", { className: "tags" }, game.tags.map((t) => el("span", { className: "tag", textContent: t })));
     const info = el("div", { className: "info" }, [
       el("h2", { textContent: game.name }),
       ...(game.description ? [el("p", { textContent: game.description })] : []),
@@ -105,18 +271,254 @@
     return el("a", { className: "card", href: game.url, title: game.url }, [thumb, info]);
   }
 
-  function render() {
+  function renderLibrary() {
     const q = search.value.trim().toLowerCase();
-    const games = GAMES.filter(g =>
-      !q || g.name.toLowerCase().includes(q) || g.tags.some(t => t.toLowerCase().includes(q)));
+    const games = GAMES.filter((g) =>
+      !q || g.name.toLowerCase().includes(q) || g.tags.some((t) => t.toLowerCase().includes(q)));
     grid.replaceChildren(...(games.length
       ? games.map(card)
       : [el("div", { className: "empty", textContent: "Nenhum jogo encontrado." })]));
     count.textContent = `${games.length} de ${GAMES.length} jogo${GAMES.length === 1 ? "" : "s"}`;
   }
+  search.addEventListener("input", renderLibrary);
+  renderLibrary();
 
-  search.addEventListener("input", render);
-  render();
+  // ---- Configurações ----
+  // `avengerSettings` e `avengerSaveSettings` são injetados pelo launcher.
+  const settings = Object.assign({ input_translation: false, button_layout: "position", mappings: {} }, window.avengerSettings);
+  const translationInput = document.getElementById("input-translation");
+  const layoutSelect = document.getElementById("button-layout");
+  const layoutRow = document.getElementById("layout-row");
+  const saved = document.getElementById("saved");
+  let savedTimer;
+
+  function applySettings() {
+    translationInput.checked = settings.input_translation;
+    layoutSelect.value = settings.button_layout;
+    layoutRow.classList.toggle("disabled", !settings.input_translation);
+    if (window.avengerInput) {
+      avengerInput.config.enabled = settings.input_translation;
+      avengerInput.config.layout = settings.button_layout;
+      avengerInput.config.mappings = settings.mappings;
+    }
+  }
+
+  function save() {
+    applySettings();
+    try {
+      window.avengerSaveSettings(JSON.stringify(settings));
+      saved.textContent = "✓ Salvo";
+    } catch (err) {
+      saved.textContent = `Erro ao salvar: ${err.message ?? err}`;
+    }
+    saved.classList.add("show");
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => saved.classList.remove("show"), 1800);
+  }
+
+  translationInput.addEventListener("change", () => { settings.input_translation = translationInput.checked; save(); });
+  layoutSelect.addEventListener("change", () => { settings.button_layout = layoutSelect.value; save(); });
+  applySettings();
+
+  // ---- Testador de controle ----
+  const padsEl = document.getElementById("pads");
+  const hint = document.getElementById("tester-hint");
+  const STANDARD_BUTTONS = window.avengerInput?.STANDARD_BUTTONS ?? [];
+  const vendorKey = window.avengerInput?.vendorKey ?? ((id) => id);
+  const getRaw = window.avengerInput?.rawGetGamepads ?? (() => navigator.getGamepads?.() ?? []);
+  let testerRunning = false;
+
+  function startTester() {
+    if (testerRunning) return;
+    testerRunning = true;
+    requestAnimationFrame(pollTester);
+  }
+
+  function padView(raw) {
+    const translated = window.avengerInput ? avengerInput.translate(raw) : raw;
+    const recognized = translated.mapping === "standard";
+    const changed = translated !== raw;
+    const mapped = changed && settings.mappings[vendorKey(raw.id)];
+    const status = !recognized
+      ? el("span", { className: "badge warn", textContent: "não reconhecido pelos jogos" })
+      : el("span", { className: "badge ok", textContent: mapped ? "mapeamento manual" : changed ? "traduzido para Xbox" : "compatível" });
+
+    const ids = el("dl", { className: "ids" }, [
+      el("dt", { textContent: "Controle" }), el("dd", { textContent: raw.id }),
+      el("dt", { textContent: "Mapping" }), el("dd", { textContent: raw.mapping || "(cru)" }),
+      el("dt", { textContent: "Jogos veem" }), el("dd", { textContent: translated.id }),
+      el("dt", { textContent: "Status" }), el("dd", {}, [status]),
+    ]);
+
+    const names = recognized ? STANDARD_BUTTONS : [];
+    const buttons = el("div", { className: "buttons" }, Array.from(translated.buttons, (b, i) =>
+      el("span", { className: "btn" + (b?.pressed ? " on" : ""), textContent: names[i] ?? `B${i}` })));
+
+    const axes = el("div", { className: "axes" }, Array.from(translated.axes.slice(0, 4), (value, i) => {
+      const marker = el("i");
+      marker.style.left = `${(value + 1) * 50}%`;
+      return el("div", { className: "axis" }, [
+        el("span", { textContent: `${["LX", "LY", "RX", "RY"][i]} ${value.toFixed(2)}` }),
+        el("div", { className: "bar" }, [marker]),
+      ]);
+    }));
+
+    return el("div", { className: "pad" }, [ids, buttons, axes]);
+  }
+
+  function pollTester() {
+    if (document.getElementById("settings").hidden) { testerRunning = false; return; }
+    requestAnimationFrame(pollTester);
+    const pads = [...getRaw()].filter(Boolean);
+    hint.hidden = pads.length > 0;
+    padsEl.replaceChildren(...pads.map(padView));
+    updateMapper(pads);
+  }
+
+  // ---- Mapeamento manual ----
+  const mapperSelect = document.getElementById("mapper-select");
+  const mapperStatus = document.getElementById("mapper-status");
+  const mapperStart = document.getElementById("mapper-start");
+  const mapperRemove = document.getElementById("mapper-remove");
+  const wizardEl = document.getElementById("wizard");
+
+  // Passos do assistente, na ordem standard (botões) e depois os 4 eixos.
+  const BUTTON_PROMPTS = [
+    "A (botão de baixo)", "B (botão da direita)", "X (botão da esquerda)", "Y (botão de cima)",
+    "LB (ombro esquerdo)", "RB (ombro direito)", "LT (gatilho esquerdo)", "RT (gatilho direito)",
+    "Back / Select", "Start", "LS (clique no analógico esquerdo)", "RS (clique no analógico direito)",
+    "D-pad para cima", "D-pad para baixo", "D-pad para a esquerda", "D-pad para a direita", "Guide / Home",
+  ];
+  const AXIS_PROMPTS = [
+    "Analógico esquerdo para a direita", "Analógico esquerdo para baixo",
+    "Analógico direito para a direita", "Analógico direito para baixo",
+  ];
+  const STEPS = [
+    ...BUTTON_PROMPTS.map((prompt, i) => ({ kind: "button", index: i, prompt: `Pressione ${prompt}` })),
+    ...AXIS_PROMPTS.map((prompt, i) => ({ kind: "axis", index: i, prompt: `Mova o ${prompt.toLowerCase()}` })),
+  ];
+  const THRESHOLD = 0.5;
+  const RELEASED = 0.3;
+
+  let mapperKeys = "";
+  let wizard = null; // { key, baseline, step, candidate, mapping }
+
+  function updateMapper(pads) {
+    // Só reconstrói o <select> quando a lista muda, para não atrapalhar a seleção.
+    const options = new Map(pads.map((pad) => [vendorKey(pad.id), pad.id]));
+    const keys = [...options.keys()].join("|");
+    if (keys !== mapperKeys) {
+      mapperKeys = keys;
+      const current = mapperSelect.value;
+      mapperSelect.replaceChildren(...(options.size
+        ? [...options].map(([key, id]) => el("option", { value: key, textContent: id }))
+        : [el("option", { value: "", textContent: "Nenhum controle conectado" })]));
+      if (options.has(current)) mapperSelect.value = current;
+      updateMapperButtons();
+    }
+    if (wizard) stepWizard(pads.find((pad) => vendorKey(pad.id) === wizard.key));
+  }
+
+  function updateMapperButtons() {
+    const key = mapperSelect.value;
+    const hasMapping = Boolean(key && settings.mappings[key]);
+    mapperStart.disabled = !key || Boolean(wizard);
+    mapperStart.textContent = hasMapping ? "Mapear de novo" : "Mapear";
+    mapperRemove.hidden = !hasMapping || Boolean(wizard);
+    mapperSelect.disabled = Boolean(wizard);
+    mapperStatus.textContent = !key
+      ? "Conecte um controle e aperte um botão."
+      : hasMapping ? "Este controle usa um mapeamento manual." : "Este controle usa o mapeamento automático.";
+  }
+
+  function startWizard() {
+    const key = mapperSelect.value;
+    const pad = [...getRaw()].find((p) => p && vendorKey(p.id) === key);
+    if (!pad) return;
+    // Repouso de cada entrada: gatilhos analógicos costumam descansar em −1.
+    wizard = {
+      key,
+      baseline: { buttons: pad.buttons.map((b) => b.pressed), axes: [...pad.axes] },
+      step: 0,
+      candidate: undefined,
+      mapping: { buttons: STANDARD_BUTTONS.map(() => null), axes: [null, null, null, null] },
+    };
+    wizardEl.hidden = false;
+    updateMapperButtons();
+    renderWizard();
+  }
+
+  function renderWizard() {
+    const step = STEPS[wizard.step];
+    document.getElementById("wizard-progress").style.width = `${(wizard.step / STEPS.length) * 100}%`;
+    document.getElementById("wizard-step").textContent = `Passo ${wizard.step + 1} de ${STEPS.length}`;
+    document.getElementById("wizard-prompt").textContent = step.prompt;
+    document.getElementById("wizard-detail").textContent = wizard.candidate
+      ? "Detectado. Solte para continuar."
+      : step.kind === "axis" ? "Leve até o fim e solte." : "Se o controle não tiver esse botão, clique em Pular.";
+  }
+
+  // Lê o controle a cada frame: detecta a entrada, espera soltar e grava.
+  function stepWizard(pad) {
+    if (!pad) return;
+    const { baseline } = wizard;
+    const step = STEPS[wizard.step];
+    const moved = pad.axes.map((value, i) => value - (baseline.axes[i] ?? 0));
+    const pressed = pad.buttons.findIndex((b, i) => b.pressed && !baseline.buttons[i]);
+    const axis = moved.findIndex((delta) => Math.abs(delta) > THRESHOLD);
+
+    if (step.kind === "axis") {
+      if (axis >= 0 && !wizard.candidate) wizard.candidate = { axis, invert: moved[axis] < 0 };
+    } else if (axis >= 0 && (!wizard.candidate || wizard.candidate.button !== undefined && step.index >= 6 && step.index <= 7)) {
+      // Gatilho com botão digital e eixo analógico: prefere o eixo.
+      wizard.candidate = { axis, dir: moved[axis] > 0 ? 1 : -1, rest: baseline.axes[axis] ?? 0 };
+    } else if (pressed >= 0 && !wizard.candidate) {
+      wizard.candidate = { button: pressed };
+    }
+
+    const idle = pressed < 0 && moved.every((delta) => Math.abs(delta) < RELEASED);
+    if (wizard.candidate && idle) {
+      commitStep(wizard.candidate);
+    } else {
+      renderWizard();
+    }
+  }
+
+  function commitStep(source) {
+    const step = STEPS[wizard.step];
+    wizard.mapping[step.kind === "axis" ? "axes" : "buttons"][step.index] = source;
+    wizard.candidate = undefined;
+    wizard.step += 1;
+    if (wizard.step < STEPS.length) {
+      renderWizard();
+      return;
+    }
+    settings.mappings = { ...settings.mappings, [wizard.key]: wizard.mapping };
+    endWizard();
+    save();
+  }
+
+  function endWizard() {
+    wizard = null;
+    wizardEl.hidden = true;
+    updateMapperButtons();
+  }
+
+  mapperSelect.addEventListener("change", updateMapperButtons);
+  mapperStart.addEventListener("click", startWizard);
+  mapperRemove.addEventListener("click", () => {
+    const { [mapperSelect.value]: _, ...rest } = settings.mappings;
+    settings.mappings = rest;
+    save();
+    updateMapperButtons();
+  });
+  document.getElementById("wizard-skip").addEventListener("click", () => wizard && commitStep(null));
+  document.getElementById("wizard-cancel").addEventListener("click", endWizard);
+
+  // Restaura a aba aberta antes de ir para um jogo e voltar com F1.
+  let initialTab = tabs[0];
+  try { initialTab = document.getElementById(sessionStorage.getItem("tab")) ?? tabs[0]; } catch {}
+  selectTab(initialTab);
 </script>
 </body>
 </html>

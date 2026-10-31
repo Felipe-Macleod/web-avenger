@@ -1,4 +1,5 @@
 use crate::client::{AvengerClient, is_window_fullscreen};
+use crate::renderer::AvengerRenderProcessHandler;
 use cef::*;
 use std::cell::RefCell;
 
@@ -41,6 +42,10 @@ wrap_app! {
 
         fn browser_process_handler(&self) -> Option<BrowserProcessHandler> {
             Some(AvengerBrowserProcessHandler::new())
+        }
+
+        fn render_process_handler(&self) -> Option<RenderProcessHandler> {
+            Some(AvengerRenderProcessHandler::new())
         }
     }
 }

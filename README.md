@@ -50,6 +50,17 @@ O catálogo padrão fica em `games.json` (embutido no binário). Para adicionar 
 
 Entradas com o mesmo `id` de um jogo embutido substituem a original.
 
+## Configurações
+
+A aba **Configurações** da Biblioteca (salva em `~/.config/web-avenger/settings.json`) tem:
+
+- **Tradução de input**: apresenta controles que não são de Xbox (ex.: Switch Pro Controller, DualSense) aos jogos como um controle de Xbox (`mapping: "standard"`, id XInput). Controles da Nintendo e da PlayStation, que o Chromium não enxerga direito com os drivers do kernel (`hid-nintendo`, `hid-playstation`), são lidos direto do `/dev/input/js*` pelo launcher (`src/native_pads.rs`) e traduzidos pelo código evdev de cada botão (`BTN_SOUTH` → A etc.).
+- **Mapeamento manual**: para controles genéricos que os jogos não reconhecem. Escolha o controle, clique em **Mapear** e aperte cada botão pedido (ou **Pular**). O mapeamento é salvo por `vendor:product` e tem prioridade sobre o automático.
+- **Botões de controles Nintendo**: por posição (B embaixo = A do Xbox) ou por rótulo (A = A).
+- **Testar controle**: mostra ao vivo o que o Chromium vê e o que os jogos vão ver.
+
+As mudanças valem para jogos abertos depois da alteração.
+
 ## Dados
 
 O perfil do navegador (cache, IndexedDB, saves e cookies) fica em `~/.local/share/web-avenger/`.

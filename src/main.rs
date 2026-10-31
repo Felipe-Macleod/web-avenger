@@ -2,11 +2,14 @@ mod app;
 mod catalog;
 mod client;
 mod library;
+mod native_pads;
+mod renderer;
+mod settings;
 
 use cef::*;
 use std::sync::OnceLock;
 
-/// URL `data:` da Biblioteca, gerada uma vez no processo principal.
+/// URL `file://` da Biblioteca, gerada uma vez no processo principal.
 static LIBRARY_URL: OnceLock<String> = OnceLock::new();
 
 pub fn library_url() -> &'static str {
@@ -31,7 +34,12 @@ fn main() {
         std::process::exit(code);
     }
 
-    LIBRARY_URL.get_or_init(|| library::data_url(&catalog::load()));
+    match library::write(&catalog::load()) {
+        Ok(url) => {
+            LIBRARY_URL.get_or_init(|| url);
+        }
+        Err(err) => eprintln!("[web-avenger] falha ao gerar a Biblioteca: {err}"),
+    }
 
     let data_dir = dirs::data_dir()
         .unwrap_or_else(std::env::temp_dir)

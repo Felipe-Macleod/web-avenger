@@ -21,6 +21,8 @@ pub enum ButtonLayout {
 pub struct Settings {
     /// Coloca a janela em tela cheia ao abrir um jogo pela Biblioteca.
     pub fullscreen_games: bool,
+    /// Faz players Unity WebGL ocuparem a janela inteira (mantendo a proporção).
+    pub maximize_player: bool,
     /// Apresenta controles não-Xbox aos jogos como um controle Xbox.
     pub input_translation: bool,
     pub button_layout: ButtonLayout,
@@ -33,6 +35,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             fullscreen_games: true,
+            maximize_player: true,
             input_translation: false,
             button_layout: ButtonLayout::default(),
             mappings: BTreeMap::new(),

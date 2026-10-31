@@ -199,11 +199,24 @@
           <strong>Abrir jogos em tela cheia</strong>
           <span>A janela entra em tela cheia ao abrir um jogo e sai ao voltar para a Biblioteca (<kbd>F1</kbd>). <kbd>F11</kbd> alterna a qualquer momento.</span>
         </div>
-        <span class="saved" id="saved-games">✓ Salvo</span>
         <label class="switch">
           <input type="checkbox" id="fullscreen-games" role="switch" aria-label="Abrir jogos em tela cheia">
           <span class="track"></span>
         </label>
+      </div>
+      <div class="row">
+        <div class="text">
+          <strong>Maximizar o player do jogo</strong>
+          <span>Players Unity WebGL ocupam a janela inteira, mantendo a proporção do jogo e sem o rodapé do Unity.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="maximize-player" role="switch" aria-label="Maximizar o player do jogo">
+          <span class="track"></span>
+        </label>
+      </div>
+      <div class="row">
+        <div class="text"><span>As mudanças valem para jogos abertos a partir de agora.</span></div>
+        <span class="saved" id="saved-games">✓ Salvo</span>
       </div>
     </section>
 
@@ -523,9 +536,10 @@
   // ---- Configurações ----
   // `avengerSettings` e `avengerSaveSettings` são injetados pelo launcher.
   const settings = Object.assign(
-    { fullscreen_games: true, input_translation: false, button_layout: "position", mappings: {} },
+    { fullscreen_games: true, maximize_player: true, input_translation: false, button_layout: "position", mappings: {} },
     window.avengerSettings);
   const fullscreenInput = document.getElementById("fullscreen-games");
+  const maximizeInput = document.getElementById("maximize-player");
   const translationInput = document.getElementById("input-translation");
   const layoutSelect = document.getElementById("button-layout");
   const layoutRow = document.getElementById("layout-row");
@@ -533,6 +547,7 @@
 
   function applySettings() {
     fullscreenInput.checked = settings.fullscreen_games;
+    maximizeInput.checked = settings.maximize_player;
     translationInput.checked = settings.input_translation;
     layoutSelect.value = settings.button_layout;
     layoutRow.classList.toggle("disabled", !settings.input_translation);
@@ -561,6 +576,10 @@
 
   fullscreenInput.addEventListener("change", () => {
     settings.fullscreen_games = fullscreenInput.checked;
+    save(document.getElementById("saved-games"));
+  });
+  maximizeInput.addEventListener("change", () => {
+    settings.maximize_player = maximizeInput.checked;
     save(document.getElementById("saved-games"));
   });
   translationInput.addEventListener("change", () => { settings.input_translation = translationInput.checked; save(); });

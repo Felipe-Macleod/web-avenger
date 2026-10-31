@@ -1,6 +1,6 @@
 //! Código que roda no processo de renderização (um por página).
 
-use crate::{catalog, library, native_pads, page_info, settings};
+use crate::{audio, catalog, library, native_pads, page_info, settings};
 use cef::*;
 use std::{cell::RefCell, collections::HashMap};
 
@@ -11,6 +11,8 @@ thread_local! {
 }
 
 const INPUT_TRANSLATION: &str = include_str!("../assets/input-translation.js");
+const PLAYER_FIT: &str = include_str!("../assets/player-fit.js");
+const AUDIO_FALLBACK: &str = include_str!("../assets/audio-fallback.js");
 
 /// Script do tradutor de input com a configuração embutida.
 fn input_translation_script(settings: &settings::Settings, expose: bool) -> String {
@@ -61,6 +63,14 @@ wrap_render_process_handler! {
             let is_library = frame.is_main() != 0 && library::is_library_url(&url);
             let settings = settings::load();
 
+            if !is_library {
+                // Lida e removida do `window` pelo script de fallback de áudio.
+                install_function(context, "__avengerDecodeAudio", &mut DecodeAudioHandler::new());
+                eval(context, AUDIO_FALLBACK);
+            }
+            if !is_library && settings.maximize_player {
+                eval(context, PLAYER_FIT);
+            }
             if !is_library && !settings.input_translation {
                 return;
             }
@@ -104,6 +114,52 @@ wrap_render_process_handler! {
                 let json = v8_value_create_string(Some(&CefString::from(&args.string(1))));
                 callback.execute_function(None, Some(&[json]));
                 context.exit();
+            }
+            1
+        }
+    }
+}
+
+wrap_v8_handler! {
+    struct DecodeAudioHandler;
+
+    impl V8Handler {
+        /// `__avengerDecodeAudio(mp4: ArrayBuffer) -> ArrayBuffer` (ver `audio::Decoded::to_bytes`)
+        fn execute(
+            &self,
+            _name: Option<&CefString>,
+            _object: Option<&mut V8Value>,
+            arguments: Option<&[Option<V8Value>]>,
+            retval: Option<&mut Option<V8Value>>,
+            exception: Option<&mut CefString>,
+        ) -> i32 {
+            let input = arguments
+                .and_then(|args| args.first().cloned().flatten())
+                .filter(|arg| arg.is_array_buffer() != 0)
+                .map(|arg| {
+                    let (data, len) = (arg.array_buffer_data(), arg.array_buffer_byte_length());
+                    if data.is_null() || len == 0 {
+                        return Vec::new();
+                    }
+                    // SAFETY: ponteiro e tamanho vêm do próprio ArrayBuffer, vivo durante a chamada.
+                    unsafe { std::slice::from_raw_parts(data.cast::<u8>(), len) }.to_vec()
+                });
+
+            let result = input
+                .ok_or_else(|| "esperado um ArrayBuffer".to_string())
+                .and_then(audio::decode)
+                .map(|decoded| decoded.to_bytes());
+            match result {
+                Ok(mut bytes) => {
+                    if let Some(retval) = retval {
+                        *retval = v8_value_create_array_buffer_with_copy(bytes.as_mut_ptr(), bytes.len());
+                    }
+                }
+                Err(err) => {
+                    if let Some(exception) = exception {
+                        *exception = CefString::from(err.as_str());
+                    }
+                }
             }
             1
         }

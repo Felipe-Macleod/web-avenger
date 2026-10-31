@@ -1,4 +1,5 @@
 mod app;
+mod audio;
 mod catalog;
 mod client;
 mod library;

@@ -59,12 +59,17 @@ Entradas com o mesmo `id` de um jogo embutido substituem a original.
 A aba **Configurações** da Biblioteca (salva em `~/.config/web-avenger/settings.json`) tem:
 
 - **Abrir jogos em tela cheia** (ligada por padrão): a janela entra em tela cheia ao abrir um jogo e sai ao voltar para a Biblioteca (`F1`). `F11` continua alternando manualmente.
+- **Maximizar o player do jogo** (ligada por padrão): players Unity WebGL (template padrão do Unity 2020+ e do UnityLoader antigo) ocupam a janela inteira mantendo a proporção, sem o rodapé (`assets/player-fit.js`).
 - **Tradução de input**: apresenta controles que não são de Xbox (ex.: Switch Pro Controller, DualSense) aos jogos como um controle de Xbox (`mapping: "standard"`, id XInput). Controles da Nintendo e da PlayStation, que o Chromium não enxerga direito com os drivers do kernel (`hid-nintendo`, `hid-playstation`), são lidos direto do `/dev/input/js*` pelo launcher (`src/native_pads.rs`) e traduzidos pelo código evdev de cada botão (`BTN_SOUTH` → A etc.).
 - **Mapeamento manual**: para controles genéricos que os jogos não reconhecem. Escolha o controle, clique em **Mapear** e aperte cada botão pedido (ou **Pular**). O mapeamento é salvo por `vendor:product` e tem prioridade sobre o automático.
 - **Botões de controles Nintendo**: por posição (B embaixo = A do Xbox) ou por rótulo (A = A).
 - **Testar controle**: mostra ao vivo o que o Chromium vê e o que os jogos vão ver.
 
 As mudanças valem para jogos abertos depois da alteração.
+
+## Áudio AAC
+
+As builds do CEF não trazem codecs proprietários, então o Chromium embutido não decodifica AAC — o formato que o Unity WebGL usa para áudio comprimido (jogos ficariam mudos). O launcher intercepta `decodeAudioData` para buffers MP4/M4A (`assets/audio-fallback.js`) e decodifica em Rust com o [Symphonia](https://github.com/pdeljanov/Symphonia) (`src/audio.rs`). MP3, Ogg/Vorbis e Opus continuam com o decodificador do Chromium.
 
 ## Dados
 

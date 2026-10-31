@@ -19,6 +19,17 @@ Para não baixar o CEF a cada `cargo clean`, exporte uma cópia compartilhada:
 export CEF_PATH="$HOME/.local/share/cef"   # o build baixa para lá se não existir
 ```
 
+### Windows
+
+Requisitos: Rust com o toolchain MSVC (`rustup`), Visual Studio 2022 com a carga "Desenvolvimento para desktop com C++", `cmake` e `ninja` (ex.: `choco install cmake ninja`).
+
+```powershell
+.\scripts\bundle.ps1                 # cargo build --release + monta dist\web-avenger\
+.\dist\web-avenger\web-avenger.exe
+```
+
+A pasta `dist\web-avenger\` é autocontida: basta copiá-la para outra máquina Windows x64. Para compartilhar o CEF entre builds, defina `$env:CEF_PATH`. No build de release o app não abre janela de console; para ver os logs, rode o build de debug (`cargo run`).
+
 ## Atalhos
 
 | Tecla | Ação |
@@ -27,7 +38,7 @@ export CEF_PATH="$HOME/.local/share/cef"   # o build baixa para lá se não exis
 | `F11` | Tela cheia |
 | `F5`  | Recarregar (ignorando cache) |
 
-No Wayland o app roda via XWayland (`--ozone-platform=x11`), porque o CEF em Wayland nativo não acompanha os redimensionamentos do compositor.
+No Linux com Wayland o app roda via XWayland (`--ozone-platform=x11`), porque o CEF em Wayland nativo não acompanha os redimensionamentos do compositor.
 
 Para depurar, use `./web-avenger --remote-debugging-port=9222` e abra `chrome://inspect` em outro Chrome.
 
@@ -75,7 +86,7 @@ O item **Configurações** da sidebar (salva em `~/.config/web-avenger/settings.
 - **Abrir jogos em tela cheia** (ligada por padrão): a janela entra em tela cheia ao abrir um jogo e sai ao voltar para a Biblioteca (`F1`). `F11` continua alternando manualmente.
 - **Maximizar o player do jogo** (ligada por padrão): players Unity WebGL (template padrão do Unity 2020+ e do UnityLoader antigo) ocupam a janela inteira mantendo a proporção, sem o rodapé (`assets/player-fit.js`).
 - **Mostrar jogos +18** (desligada por padrão): desligada, esconde da Biblioteca (grade, contagens, categorias e Recentes) os jogos com as tags `nsfw`, `porn`, `hentai`, `adult`, `erotic` ou `18+`.
-- **Tradução de input**: apresenta controles que não são de Xbox (ex.: Switch Pro Controller, DualSense) aos jogos como um controle de Xbox (`mapping: "standard"`, id XInput). Controles da Nintendo e da PlayStation, que o Chromium não enxerga direito com os drivers do kernel (`hid-nintendo`, `hid-playstation`), são lidos direto do `/dev/input/js*` pelo launcher (`src/native_pads.rs`) e traduzidos pelo código evdev de cada botão (`BTN_SOUTH` → A etc.).
+- **Tradução de input**: apresenta controles que não são de Xbox (ex.: Switch Pro Controller, DualSense) aos jogos como um controle de Xbox (`mapping: "standard"`, id XInput). No Linux, controles da Nintendo e da PlayStation, que o Chromium não enxerga direito com os drivers do kernel (`hid-nintendo`, `hid-playstation`), são lidos direto do `/dev/input/js*` pelo launcher (`src/native_pads.rs`) e traduzidos pelo código evdev de cada botão (`BTN_SOUTH` → A etc.). No Windows o próprio Chromium já lê esses controles.
 - **Mapeamento manual**: para controles genéricos que os jogos não reconhecem. Escolha o controle, clique em **Mapear** e aperte cada botão pedido (ou **Pular**). O mapeamento é salvo por `vendor:product` e tem prioridade sobre o automático.
 - **Botões de controles Nintendo**: por posição (B embaixo = A do Xbox) ou por rótulo (A = A).
 - **Testar controle**: mostra ao vivo o que o Chromium vê e o que os jogos vão ver.
@@ -100,7 +111,7 @@ Em **Configurações → Apps conectados**, o botão **Conectar** liga sua conta
 ### Onde fica o token
 
 - O login acontece dentro do app, então a sessão do itch.io fica no perfil (`~/.local/share/web-avenger/`) — isso também libera jogos pagos de navegador na sincronização.
-- O token OAuth fica em `~/.config/web-avenger/itch-token.enc` (permissão `0600`), **cifrado com ChaCha20-Poly1305**. A chave de 32 bytes fica no **chaveiro do sistema** (Secret Service: gnome-keyring, KWallet…), como `web-avenger` / `itch-token-key`. Sem chaveiro disponível a conexão é recusada.
+- O token OAuth fica em `~/.config/web-avenger/itch-token.enc` (permissão `0600`), **cifrado com ChaCha20-Poly1305**. A chave de 32 bytes fica no **chaveiro do sistema** (Secret Service: gnome-keyring, KWallet…; no Windows, o Gerenciador de Credenciais), como `web-avenger` / `itch-token-key`. Sem chaveiro disponível a conexão é recusada.
 - O token só é lido pelo processo principal do launcher; nunca chega às páginas.
 - Os jogos importados ficam em um arquivo só deles, `~/.config/web-avenger/itch-games.json` (o `games.json` fica com os jogos manuais). Editar ou remover um jogo importado altera esse arquivo; os removidos ficam marcados com `"removed": true` para a sincronização não trazê-los de volta.
 - Os jogos comprados vêm da API (`/profile/owned-keys`). Os jogos de cada coleção são lidos da página da coleção (`itch.io/c/<id>`) com a sessão do app, porque o endpoint da API para isso exige o escopo `collection:view`, que o OAuth do itch.io não concede. Os jogos de navegador são reconhecidos pelo tipo do projeto (`html`) ou pelo selo "Play in browser".
@@ -112,7 +123,14 @@ As builds do CEF não trazem codecs proprietários, então o Chromium embutido n
 
 ## Dados
 
-Tudo fica em `~/.local/share/web-avenger/`:
+Os caminhos acima são os do Linux. No Windows:
+
+| Linux | Windows | Conteúdo |
+|-------|---------|----------|
+| `~/.config/web-avenger/` | `%APPDATA%\web-avenger\` | `games.json`, `itch-games.json`, `settings.json`, `itch-token.enc` |
+| `~/.local/share/web-avenger/` | `%LOCALAPPDATA%\web-avenger\` | perfis do Chromium e `playtime.json` |
+
+Os perfis do Chromium ficam em `~/.local/share/web-avenger/` (`%LOCALAPPDATA%\web-avenger\` no Windows):
 
 - **Perfil principal** (`Default/`): a Biblioteca e os jogos importados do itch.io (que precisam da sessão do itch.io feita no app), com cache, cookies, IndexedDB e localStorage.
 - **Um perfil por jogo manual** (`game-<id>/`): cada jogo da Fonte "Manual" roda isolado, como numa janela anônima, mas os dados persistem entre sessões. Um jogo não enxerga cookies nem saves dos outros, nem a sessão do itch.io. Na primeira vez que um jogo manual abre com perfil próprio, o IndexedDB da origem dele é copiado do perfil principal (onde ficam os saves de Unity/Emscripten); o localStorage antigo não é migrado (é um banco único para todas as origens).

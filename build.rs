@@ -3,6 +3,15 @@ fn main() {
     #[cfg(target_os = "linux")]
     println!("cargo:rustc-link-arg-bins=-Wl,-rpath,$ORIGIN");
 
+    // O CEF exige o manifesto de compatibilidade com o Windows 10+ no executável; sem ele
+    // o Chromium enxerga uma versão antiga do Windows. O padrão do `embed-manifest` já
+    // declara Windows 10/11, DPI por monitor (v2) e caminhos longos.
+    #[cfg(windows)]
+    if std::env::var_os("CARGO_CFG_WINDOWS").is_some() {
+        embed_manifest::embed_manifest(embed_manifest::new_manifest("WebAvenger"))
+            .expect("falha ao embutir o manifesto do Windows");
+    }
+
     // `client_id` do app OAuth do itch.io: do ambiente ou do `.env`, embutido no binário
     // (o ambiente em tempo de execução ainda tem prioridade, ver `src/itch/mod.rs`).
     println!("cargo:rerun-if-env-changed=ITCH_CLIENT_ID");

@@ -1,3 +1,6 @@
+// Sem janela de console no Windows (só no release, para ver os logs ao depurar).
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 mod app;
 mod audio;
 mod catalog;
@@ -5,7 +8,15 @@ mod client;
 mod http;
 mod itch;
 mod library;
+#[cfg(target_os = "linux")]
 mod native_pads;
+/// Fora do Linux o Chromium já lê os controles da Nintendo e da Sony.
+#[cfg(not(target_os = "linux"))]
+mod native_pads {
+    pub fn snapshot() -> Vec<()> {
+        Vec::new()
+    }
+}
 mod page_info;
 mod playtime;
 mod profiles;
@@ -19,9 +30,10 @@ use std::sync::OnceLock;
 /// URL `file://` da Biblioteca, gerada uma vez no processo principal.
 static LIBRARY_URL: OnceLock<String> = OnceLock::new();
 
-/// Raiz dos dados do Chromium (`root_cache_path`): `~/.local/share/web-avenger`.
+/// Raiz dos dados do Chromium (`root_cache_path`): `~/.local/share/web-avenger`
+/// (no Windows, `%LOCALAPPDATA%\web-avenger`: cache não vai para o perfil móvel).
 pub fn data_dir() -> std::path::PathBuf {
-    dirs::data_dir().unwrap_or_else(std::env::temp_dir).join("web-avenger")
+    dirs::data_local_dir().unwrap_or_else(std::env::temp_dir).join("web-avenger")
 }
 
 pub fn library_url() -> &'static str {

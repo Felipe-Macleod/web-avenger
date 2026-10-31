@@ -3,22 +3,29 @@ use crate::renderer::AvengerRenderProcessHandler;
 use cef::*;
 use std::cell::RefCell;
 
-/// Flags do Chromium necessárias para jogos WebGPU/WASM no Linux.
+/// Flags do Chromium necessárias para jogos WebGPU/WASM.
 const SWITCHES: &[(&str, Option<&str>)] = &[
     ("enable-unsafe-webgpu", None),
     ("ignore-gpu-blocklist", None),
     ("enable-gpu-rasterization", None),
-    // Sem a feature `Vulkan`, o WebGPU no Linux cai no SwiftShader (CPU, ~2 FPS).
-    ("enable-features", Some("Vulkan")),
     ("autoplay-policy", Some("no-user-gesture-required")),
-    // Views do CEF em Wayland nativo não acompanha os resizes do compositor
-    // (fullscreen e tiling ficam com o conteúdo preso no tamanho inicial).
-    ("ozone-platform", Some("x11")),
     // No estilo Chrome, inicializar um perfil novo (jogos manuais, ver `profiles`)
     // abriria uma janela "Nova guia" do Chromium. (`no-startup-window` também evitaria,
     // mas mantém o processo vivo depois de fechar a janela.)
     ("no-first-run", None),
 ];
+
+/// Flags só do Linux (no Windows o WebGPU usa D3D12 e não há Ozone).
+#[cfg(target_os = "linux")]
+const PLATFORM_SWITCHES: &[(&str, Option<&str>)] = &[
+    // Sem a feature `Vulkan`, o WebGPU no Linux cai no SwiftShader (CPU, ~2 FPS).
+    ("enable-features", Some("Vulkan")),
+    // Views do CEF em Wayland nativo não acompanha os resizes do compositor
+    // (fullscreen e tiling ficam com o conteúdo preso no tamanho inicial).
+    ("ozone-platform", Some("x11")),
+];
+#[cfg(not(target_os = "linux"))]
+const PLATFORM_SWITCHES: &[(&str, Option<&str>)] = &[];
 
 wrap_app! {
     pub struct AvengerApp;
@@ -34,7 +41,7 @@ wrap_app! {
             let Some(command_line) = command_line.filter(|_| is_browser) else {
                 return;
             };
-            for (name, value) in SWITCHES {
+            for (name, value) in SWITCHES.iter().chain(PLATFORM_SWITCHES) {
                 let name = CefString::from(*name);
                 match value {
                     Some(value) => command_line

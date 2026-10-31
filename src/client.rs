@@ -6,6 +6,12 @@ const VK_F1: i32 = 0x70;
 const VK_F5: i32 = 0x74;
 const VK_F11: i32 = 0x7A;
 
+/// Evento nativo de teclado que o CEF repassa em `on_pre_key_event`.
+#[cfg(target_os = "linux")]
+type OsKeyEvent = sys::XEvent;
+#[cfg(windows)]
+type OsKeyEvent = sys::MSG;
+
 /// Se a página atual é um jogo do catálogo (entrou pela Biblioteca).
 static IN_GAME: AtomicBool = AtomicBool::new(false);
 /// Browsers abertos (Biblioteca + jogo manual, ver `shell`).
@@ -153,7 +159,7 @@ wrap_keyboard_handler! {
             &self,
             browser: Option<&mut Browser>,
             event: Option<&KeyEvent>,
-            _os_event: Option<&mut sys::XEvent>,
+            _os_event: Option<&mut OsKeyEvent>,
             _is_keyboard_shortcut: Option<&mut i32>,
         ) -> i32 {
             let (Some(browser), Some(event)) = (browser, event) else {

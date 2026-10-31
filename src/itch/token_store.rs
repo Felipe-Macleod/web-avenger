@@ -1,8 +1,9 @@
 //! Token OAuth do itch.io guardado cifrado.
 //!
-//! O token fica em `~/.config/web-avenger/itch-token.enc` (permissão 0600), cifrado com
-//! ChaCha20-Poly1305. A chave (32 bytes aleatórios) fica no chaveiro do sistema
-//! (Secret Service: gnome-keyring, KWallet...), protegida pelo login da sessão. Sem
+//! O token fica em `~/.config/web-avenger/itch-token.enc` (permissão 0600; no Windows,
+//! `%APPDATA%\web-avenger\`), cifrado com ChaCha20-Poly1305. A chave (32 bytes aleatórios)
+//! fica no chaveiro do sistema (Secret Service: gnome-keyring, KWallet...; no Windows, o
+//! Gerenciador de Credenciais), protegida pelo login da sessão. Sem
 //! chaveiro a conexão é recusada: guardar a chave ao lado do arquivo não protegeria nada.
 //!
 //! Só o processo principal usa este módulo; o token nunca chega ao JavaScript.
@@ -12,10 +13,11 @@ use chacha20poly1305::{
     ChaCha20Poly1305, Key, Nonce,
 };
 use serde::{Deserialize, Serialize};
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 use std::{
     fs, io,
     io::Write,
-    os::unix::fs::OpenOptionsExt,
     path::PathBuf,
 };
 
@@ -55,7 +57,7 @@ fn keyring_entry() -> Result<keyring::Entry, String> {
 fn keyring_error(err: keyring::Error) -> String {
     match err {
         keyring::Error::NoStorageAccess(e) | keyring::Error::PlatformFailure(e) => {
-            format!("Nenhum chaveiro do sistema disponível (Secret Service): {e}")
+            format!("Nenhum chaveiro do sistema disponível: {e}")
         }
         other => format!("Erro no chaveiro do sistema: {other}"),
     }
@@ -120,15 +122,13 @@ pub fn save(data: &TokenData) -> Result<(), String> {
         fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
     // Grava num temporário 0600 e renomeia: o arquivo nunca fica legível por outros
-    // nem pela metade.
+    // nem pela metade. (No Windows a ACL do perfil já restringe o arquivo ao usuário.)
     let tmp = path.with_extension("enc.tmp");
-    let mut file = fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(&tmp)
-        .map_err(|e| e.to_string())?;
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    options.mode(0o600);
+    let mut file = options.open(&tmp).map_err(|e| e.to_string())?;
     file.write_all(&encrypted).map_err(|e| e.to_string())?;
     file.sync_all().map_err(|e| e.to_string())?;
     fs::rename(&tmp, &path).map_err(|e| e.to_string())

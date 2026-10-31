@@ -26,7 +26,14 @@ pub fn write(games: &[Game]) -> io::Result<String> {
         fs::create_dir_all(dir)?;
     }
     fs::write(&path, html)?;
-    Ok(format!("file://{}", path.to_string_lossy().replace(' ', "%20")))
+    Ok(file_url(&path.to_string_lossy()))
+}
+
+/// `/home/x/a b.html` → `file:///home/x/a%20b.html`; `C:\x\a.html` → `file:///C:/x/a.html`.
+fn file_url(path: &str) -> String {
+    let path = path.replace('\\', "/").replace(' ', "%20");
+    let slash = if path.starts_with('/') { "" } else { "/" };
+    format!("file://{slash}{path}")
 }
 
 /// Se a URL de um frame é a Biblioteca (usado no processo de renderização).
@@ -47,5 +54,16 @@ mod tests {
         assert!(is_library_url(&format!("{url}#itch=ok&user=a")));
         assert!(!is_library_url("https://exemplo.com/web-avenger/library.html"));
         assert!(!is_library_url("file:///tmp/outra.html#/web-avenger/library.html"));
+    }
+
+    #[test]
+    fn gera_url_de_arquivo_no_linux_e_no_windows() {
+        assert_eq!(
+            file_url("/home/x y/.cache/web-avenger/library.html"),
+            "file:///home/x%20y/.cache/web-avenger/library.html"
+        );
+        let windows = file_url(r"C:\Users\x y\AppData\Local\web-avenger\library.html");
+        assert_eq!(windows, "file:///C:/Users/x%20y/AppData/Local/web-avenger/library.html");
+        assert!(is_library_url(&windows));
     }
 }

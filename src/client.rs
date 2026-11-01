@@ -194,13 +194,21 @@ wrap_life_span_handler! {
             1
         }
 
-        fn on_after_created(&self, _browser: Option<&mut Browser>) {
+        fn on_after_created(&self, browser: Option<&mut Browser>) {
             OPEN_BROWSERS.fetch_add(1, Ordering::Relaxed);
+            // Janela de jogo: bloqueio de anúncios, a menos que o jogo o desligue.
+            if let Some(browser) = browser
+                && let Some(id) = crate::shell::game_of(browser)
+            {
+                let enabled = crate::catalog::load().iter().any(|game| game.id == id && !game.no_adblock);
+                crate::adblock::set_enabled(browser.identifier(), enabled);
+            }
         }
 
         fn on_before_close(&self, browser: Option<&mut Browser>) {
             if let Some(browser) = browser {
                 crate::playtime::on_browser_closed(browser.identifier());
+                crate::adblock::set_enabled(browser.identifier(), false);
             }
             // A Biblioteca e cada jogo manual têm browsers separados (ver `shell`); o app
             // só sai quando o último fecha.
@@ -215,6 +223,19 @@ wrap_request_handler! {
     struct AvengerRequestHandler;
 
     impl RequestHandler {
+        fn resource_request_handler(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut Frame>,
+            _request: Option<&mut Request>,
+            _is_navigation: i32,
+            _is_download: i32,
+            _request_initiator: Option<&CefString>,
+            _disable_default_handling: Option<&mut i32>,
+        ) -> Option<ResourceRequestHandler> {
+            Some(AvengerResourceRequestHandler::new())
+        }
+
         fn on_before_browse(
             &self,
             browser: Option<&mut Browser>,
@@ -244,6 +265,31 @@ wrap_request_handler! {
                 return 1;
             }
             0
+        }
+    }
+}
+
+wrap_resource_request_handler! {
+    struct AvengerResourceRequestHandler;
+
+    impl ResourceRequestHandler {
+        fn on_before_resource_load(
+            &self,
+            browser: Option<&mut Browser>,
+            frame: Option<&mut Frame>,
+            request: Option<&mut Request>,
+            _callback: Option<&mut Callback>,
+        ) -> ReturnValue {
+            // Roda na thread de IO: o `adblock` decide sem consultar o `shell`.
+            if let (Some(browser), Some(request)) = (browser, request) {
+                let url = CefStringUtf16::from(&request.url()).to_string();
+                let source = frame.map(|frame| CefStringUtf16::from(&frame.url()).to_string()).unwrap_or_default();
+                if crate::adblock::should_block(browser.identifier(), &url, &source, request.resource_type()) {
+                    return ReturnValue::CANCEL;
+                }
+            }
+            // O padrão do cef-rs (0) seria `RV_CANCEL`.
+            ReturnValue::CONTINUE
         }
     }
 }

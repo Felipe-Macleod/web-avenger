@@ -25,6 +25,10 @@ pub struct Game {
     /// na Biblioteca). Jogos do próprio usuário são apagados de verdade.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub removed: bool,
+    /// Desliga o bloqueio de anúncios no jogo (ver `adblock`), para jogos que dependem
+    /// do SDK de anúncios.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub no_adblock: bool,
     /// De onde o jogo veio (ex.: `"itch.io"`); ausente = cadastro manual.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,

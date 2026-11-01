@@ -132,6 +132,7 @@
   .row .text strong { display: block; font-weight: 600; }
   .row .text span { color: var(--muted); font-size: 13px; }
   .row.disabled { opacity: .45; pointer-events: none; }
+  .row.compact { padding: 4px 0; }
   .switch { position: relative; width: 44px; height: 24px; flex: none; }
   .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
   .switch .track { position: absolute; inset: 0; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); transition: background .15s; pointer-events: none; }
@@ -300,7 +301,7 @@
       <div class="row">
         <div class="text">
           <strong>Abrir jogos em tela cheia</strong>
-          <span>A janela entra em tela cheia ao abrir um jogo e sai ao voltar para a Biblioteca (<kbd>F1</kbd>). <kbd>F11</kbd> alterna a qualquer momento.</span>
+          <span>A janela do jogo já abre em tela cheia. <kbd>F11</kbd> alterna a qualquer momento.</span>
         </div>
         <label class="switch">
           <input type="checkbox" id="fullscreen-games" role="switch" aria-label="Abrir jogos em tela cheia">
@@ -465,6 +466,16 @@
       <label class="field"><span>Tags <small>(separadas por vírgula, opcional)</small></span>
         <input name="tags" placeholder="wasm, webgpu, esporte" autocomplete="off">
       </label>
+      <div class="row compact">
+        <div class="text">
+          <strong>Bloquear anúncios</strong>
+          <span>Desligue se o jogo travar ou não carregar. Vale na próxima vez que o jogo abrir.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" name="adblock" role="switch" aria-label="Bloquear anúncios" checked>
+          <span class="track"></span>
+        </label>
+      </div>
       <p class="form-error" id="game-error" hidden></p>
     </div>
     <div class="dialog-actions">
@@ -1026,6 +1037,7 @@
       description: value("description"),
       thumbnail: value("thumbnail") || null,
       tags: value("tags").split(",").map((t) => t.trim()).filter(Boolean),
+      no_adblock: !gameForm.adblock.checked,
     };
     let saved;
     try {
@@ -1063,6 +1075,7 @@
     gameForm.thumbnail.value = game.thumbnail ?? "";
     gameForm.description.value = game.description ?? "";
     gameForm.tags.value = game.tags.join(", ");
+    gameForm.adblock.checked = !game.no_adblock;
     detectedHint.hidden = !game.homepage;
     detectedHint.textContent = game.homepage ? `Página do jogo: ${game.homepage}` : "";
     gameError.hidden = true;

@@ -66,6 +66,7 @@ wrap_browser_process_handler! {
 
     impl BrowserProcessHandler {
         fn on_context_initialized(&self) {
+            crate::adblock::init();
             match command_line_get_global() {
                 Some(command_line) => crate::shell::open_from_command_line(&command_line),
                 None => crate::shell::open_library(),

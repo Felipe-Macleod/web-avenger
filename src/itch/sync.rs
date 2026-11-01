@@ -321,6 +321,7 @@ fn import(job: Shared, candidate: Candidate) {
                         thumbnail: info.thumbnail.clone().or(cover),
                         tags: info.tags.clone(),
                         removed: false,
+                        no_adblock: false,
                         source: Some(catalog::ITCH_SOURCE.into()),
                         itch_id,
                         dmm_id: None,

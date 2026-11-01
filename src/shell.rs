@@ -166,7 +166,7 @@ pub fn is_library_browser(browser: &Browser) -> bool {
 
 /// Id do jogo cuja janela tem o browser. Os views são copiados antes da comparação
 /// para não manter o `RefCell` emprestado durante chamadas ao CEF.
-fn game_of(browser: &Browser) -> Option<String> {
+pub fn game_of(browser: &Browser) -> Option<String> {
     let games: Vec<(String, BrowserView)> =
         SHELL.with(|shell| shell.borrow().games.iter().map(|(id, game)| (id.clone(), game.view.clone())).collect());
     games.into_iter().find(|(_, view)| same_browser(view, browser)).map(|(id, _)| id)

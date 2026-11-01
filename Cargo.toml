@@ -18,6 +18,9 @@ chacha20poly1305 = "0.10"
 getrandom = "0.2"
 sha2 = "0.10"
 base64 = "0.22"
+# Bloqueio de anúncios nas janelas de jogo (motor do Brave, listas EasyList/EasyPrivacy).
+# Sem a feature padrão `single-thread`: o motor é consultado na thread de IO do CEF.
+adblock = { version = "0.13", default-features = false, features = ["addr", "embedded-domain-resolver", "full-regex-handling"] }
 
 # Chaveiro do sistema: Secret Service no Linux, Credential Manager no Windows.
 # (Sem a feature da plataforma o `keyring` usa um armazenamento só em memória.)

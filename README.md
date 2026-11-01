@@ -127,6 +127,10 @@ O DMM não tem API pública nem OAuth. Em **Configurações → Apps conectados 
 
 Os jogos do DMM são bloqueados fora do Japão: use uma VPN no sistema. Na primeira vez que abrir um jogo do FANZA, o site pede a verificação de idade. **Desconectar** apaga os cookies do DMM e do FANZA.
 
+## Bloqueio de anúncios
+
+As janelas de jogo bloqueiam anúncios e rastreadores com as listas [EasyList](https://easylist.to/) e EasyPrivacy (motor do Brave, crate `adblock`). Só requisições de rede são bloqueadas (a página do jogo nunca); a Biblioteca e os logins do itch.io/DMM ficam sem bloqueio. As listas ficam em `~/.local/share/web-avenger/adblock/` e são baixadas de novo a cada 24 h. Jogos que dependem do SDK de anúncios (travam esperando o anúncio) podem desligar o bloqueio em **Editar jogo → Bloquear anúncios**; vale na próxima vez que o jogo abrir.
+
 ## Áudio AAC
 
 As builds do CEF não trazem codecs proprietários, então o Chromium embutido não decodifica AAC — o formato que o Unity WebGL usa para áudio comprimido (jogos ficariam mudos). O launcher intercepta `decodeAudioData` para buffers MP4/M4A (`assets/audio-fallback.js`) e decodifica em Rust com o [Symphonia](https://github.com/pdeljanov/Symphonia) (`src/audio.rs`). MP3, Ogg/Vorbis e Opus continuam com o decodificador do Chromium.

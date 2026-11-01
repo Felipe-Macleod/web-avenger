@@ -156,6 +156,7 @@ fn to_catalog_game(game: &MyGame) -> Option<catalog::Game> {
         thumbnail: game.thumbnail.clone(),
         tags,
         removed: false,
+        no_adblock: false,
         source: Some(catalog::DMM_SOURCE.into()),
         itch_id: None,
         dmm_id: Some(game.id.clone()),

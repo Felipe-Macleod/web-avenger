@@ -38,7 +38,7 @@ pub struct MyGame {
     pub genre: Option<String>,
     /// `siteType: "ADULT"` (FANZA GAMES).
     pub adult: bool,
-    browser: bool,
+    pub browser: bool,
 }
 
 /// Conteúdo da página "Meus jogos".
@@ -138,7 +138,7 @@ pub fn play_url(link: &str) -> Option<String> {
     Some(format!("https://play.{host}/game/{slug}"))
 }
 
-fn to_catalog_game(game: &MyGame) -> Option<catalog::Game> {
+pub(crate) fn to_catalog_game(game: &MyGame) -> Option<catalog::Game> {
     let mut tags: Vec<String> = game.genre.iter().cloned().collect();
     if game.adult {
         tags.push("18+".into()); // `ADULT_TAGS` da Biblioteca: respeita o filtro +18
@@ -166,10 +166,7 @@ fn to_catalog_game(game: &MyGame) -> Option<catalog::Game> {
 
 /// Lê "Meus jogos" do `__NEXT_DATA__` da página.
 pub fn parse_my_games(html: &str) -> Result<MyGamesPage, String> {
-    const START: &str = r#"<script id="__NEXT_DATA__" type="application/json">"#;
-    let start = html.find(START).ok_or("página sem __NEXT_DATA__")? + START.len();
-    let end = html[start..].find("</script>").ok_or("__NEXT_DATA__ incompleto")? + start;
-    let data: Value = serde_json::from_str(&html[start..end]).map_err(|e| format!("__NEXT_DATA__ inválido: {e}"))?;
+    let data = next_data(html)?;
     let props = &data["props"]["pageProps"];
     let state = props["__APOLLO_STATE__"].as_object().ok_or("página sem __APOLLO_STATE__")?;
     let logged_in = props["memberStatus"].as_str().is_some_and(|status| status != "GUEST") && !props["userId"].is_null();
@@ -190,25 +187,32 @@ pub fn parse_my_games(html: &str) -> Result<MyGamesPage, String> {
         return Ok(MyGamesPage { logged_in: false, nickname, games: Vec::new() });
     };
     let resolve = |value: &Value| value["__ref"].as_str().and_then(|key| state.get(key)).cloned();
-    let text = |game: &Value, key: &str| game[key].as_str().map(str::trim).filter(|v| !v.is_empty()).map(str::to_string);
-    let games = my_games
-        .iter()
-        .filter_map(|entry| resolve(&resolve(entry)?["game"]))
-        .filter_map(|game| {
-            let id = text(&game, "id")?;
-            Some(MyGame {
-                browser: game["type"].as_str() == Some("BROWSER") && id.ends_with("-social-pc"),
-                name: text(&game, "name")?,
-                description: text(&game, "description").unwrap_or_default(),
-                thumbnail: text(&game, "thumbnail"),
-                link: text(&game, "link")?,
-                genre: text(&game, "genre"),
-                adult: game["siteType"].as_str() == Some("ADULT"),
-                id,
-            })
-        })
-        .collect();
+    let games = my_games.iter().filter_map(|entry| parse_game(&resolve(&resolve(entry)?["game"])?)).collect();
     Ok(MyGamesPage { logged_in, nickname, games })
+}
+
+/// JSON do `__NEXT_DATA__` de uma página do DMM.
+pub(crate) fn next_data(html: &str) -> Result<Value, String> {
+    const START: &str = r#"<script id="__NEXT_DATA__" type="application/json">"#;
+    let start = html.find(START).ok_or("página sem __NEXT_DATA__")? + START.len();
+    let end = html[start..].find("</script>").ok_or("__NEXT_DATA__ incompleto")? + start;
+    serde_json::from_str(&html[start..end]).map_err(|e| format!("__NEXT_DATA__ inválido: {e}"))
+}
+
+/// Um jogo no formato do DMM (o mesmo em "Meus jogos" e nas listas da loja).
+pub(crate) fn parse_game(game: &Value) -> Option<MyGame> {
+    let text = |key: &str| game[key].as_str().map(str::trim).filter(|v| !v.is_empty()).map(str::to_string);
+    let id = text("id")?;
+    Some(MyGame {
+        browser: game["type"].as_str() == Some("BROWSER") && id.ends_with("-social-pc"),
+        name: text("name")?,
+        description: text("description").unwrap_or_default(),
+        thumbnail: text("thumbnail"),
+        link: text("link")?,
+        genre: text("genre"),
+        adult: game["siteType"].as_str() == Some("ADULT"),
+        id,
+    })
 }
 
 #[cfg(test)]

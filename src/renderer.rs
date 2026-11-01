@@ -1,11 +1,11 @@
 //! Código que roda no processo de renderização (um por página).
 
-use crate::{audio, catalog, dmm, itch, library, native_pads, page_info, playtime, settings, shortcut};
+use crate::{audio, catalog, dmm, explore, itch, library, native_pads, page_info, playtime, settings, shortcut};
 use cef::*;
 use std::{cell::RefCell, collections::HashMap};
 
 thread_local! {
-    /// Pedidos ao processo principal (`avengerFetchPageInfo`, `avengerItch`, `avengerDmm`) aguardando resposta.
+    /// Pedidos ao processo principal (`avengerFetchPageInfo`, `avengerItch`, `avengerDmm`, `avengerExplore`) aguardando resposta.
     static PENDING_CALLBACKS: RefCell<(i32, HashMap<i32, (V8Context, V8Value)>)> =
         RefCell::new((0, HashMap::new()));
 }
@@ -101,6 +101,11 @@ wrap_render_process_handler! {
                     "avengerDmm",
                     &mut MainProcessCallHandler::new(dmm::REQUEST_MESSAGE, "avengerDmm(ação, callback)"),
                 );
+                install_function(
+                    context,
+                    "avengerExplore",
+                    &mut MainProcessCallHandler::new(explore::REQUEST_MESSAGE, "avengerExplore(json, callback)"),
+                );
                 let json = serde_json::to_string(&settings).unwrap_or_default();
                 eval(context, &format!("window.avengerSettings = {json};"));
             }
@@ -118,7 +123,7 @@ wrap_render_process_handler! {
                 return 0;
             };
             let name = CefStringUtf16::from(&message.name()).to_string();
-            if ![page_info::RESPONSE_MESSAGE, itch::RESPONSE_MESSAGE, dmm::RESPONSE_MESSAGE].contains(&name.as_str()) {
+            if ![page_info::RESPONSE_MESSAGE, itch::RESPONSE_MESSAGE, dmm::RESPONSE_MESSAGE, explore::RESPONSE_MESSAGE].contains(&name.as_str()) {
                 return 0;
             }
             let Some(args) = message.argument_list() else {

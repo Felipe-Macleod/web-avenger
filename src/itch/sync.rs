@@ -197,7 +197,7 @@ fn fetch_collection_page(job: Shared, collection: u64, title: String, page: u64,
 /// Jogos de uma página de coleção (`div.game_cell`), no formato dos jogos da API
 /// (`id`, `title`, `url`, `cover_url`, `short_text`, `type`). O selo "Play in browser"
 /// (`web_flag`) vira `type: "html"`.
-fn parse_collection_page(html: &str) -> Vec<Value> {
+pub(crate) fn parse_collection_page(html: &str) -> Vec<Value> {
     // Só a classe `game_cell` em si (não `game_cell_data`, `game_cell_tools`...).
     let starts: Vec<usize> = html
         .match_indices("class=\"game_cell")

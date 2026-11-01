@@ -60,7 +60,8 @@ wrap_client! {
                 (Some(frame), Some(message)) => {
                     (crate::page_info::handle_request(frame, message)
                         || crate::itch::handle_request(frame, message)
-                        || crate::dmm::handle_request(frame, message)) as i32
+                        || crate::dmm::handle_request(frame, message)
+                        || crate::explore::handle_request(frame, message)) as i32
                 }
                 _ => 0,
             }
@@ -200,7 +201,8 @@ wrap_life_span_handler! {
             if let Some(browser) = browser
                 && let Some(id) = crate::shell::game_of(browser)
             {
-                let enabled = crate::catalog::load().iter().any(|game| game.id == id && !game.no_adblock);
+                // Jogos fora do catálogo (abertos pelo Explorar) também bloqueiam.
+                let enabled = !crate::catalog::load().iter().any(|game| game.id == id && game.no_adblock);
                 crate::adblock::set_enabled(browser.identifier(), enabled);
             }
         }

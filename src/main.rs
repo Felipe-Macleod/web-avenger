@@ -8,6 +8,7 @@ mod catalog;
 mod client;
 mod http;
 mod dmm;
+mod explore;
 mod itch;
 mod library;
 #[cfg(target_os = "linux")]

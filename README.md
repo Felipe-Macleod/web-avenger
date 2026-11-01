@@ -127,6 +127,15 @@ O DMM não tem API pública nem OAuth. Em **Configurações → Apps conectados 
 
 Os jogos do DMM são bloqueados fora do Japão: use uma VPN no sistema. Na primeira vez que abrir um jogo do FANZA, o site pede a verificação de idade. **Desconectar** apaga os cookies do DMM e do FANZA.
 
+## Explorar
+
+A aba **Explorar** lista jogos de navegador das lojas:
+
+- **itch.io:** ordenados por populares, mais bem avaliados, novos ou mais vendidos. **Jogar** abre o jogo numa janela sem adicioná-lo, e **Adicionar** abre o cadastro já preenchido.
+- **DMM GAMES** e **FANZA GAMES:** ordenados por populares, novos ou mais jogados. **Jogar** grava o jogo na Biblioteca, como a sincronização faria, e o abre. O DMM o coloca em マイゲーム ao iniciar, então ele continua na Biblioteca depois de sincronizar. Fora do Japão, use VPN.
+
+Com **Mostrar jogos +18** desligado, o FANZA e a ordem **+18** do itch.io somem. Nesse caso, a lista do itch.io é lida sem login, e a listagem anônima do itch.io não traz jogos adultos.
+
 ## Bloqueio de anúncios
 
 As janelas de jogo bloqueiam anúncios e rastreadores com as listas [EasyList](https://easylist.to/) e EasyPrivacy (motor do Brave, crate `adblock`). Só requisições de rede são bloqueadas (a página do jogo nunca); a Biblioteca e os logins do itch.io/DMM ficam sem bloqueio. As listas ficam em `~/.local/share/web-avenger/adblock/` e são baixadas de novo a cada 24 h. Jogos que dependem do SDK de anúncios (travam esperando o anúncio) podem desligar o bloqueio em **Editar jogo → Bloquear anúncios**; vale na próxima vez que o jogo abrir.

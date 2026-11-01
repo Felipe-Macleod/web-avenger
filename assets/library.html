@@ -306,6 +306,8 @@
         <option value="new">Novos</option>
         <option value="start">Mais jogados</option>
       </select>
+      <button class="action danger" id="feed-remove" hidden>Remover feed</button>
+      <button class="action" id="feed-add" title="Cadastrar um feed RSS ou Atom">+ Feed</button>
     </div>
     <select id="sort" aria-label="Ordenar por" title="Ordenar por">
       <option value="recent">Recentes</option>
@@ -517,6 +519,26 @@
       <button class="action danger" type="button" id="game-remove" style="margin-right:auto" hidden>Remover jogo</button>
       <button class="action" type="button" data-close>Cancelar</button>
       <button class="action primary" type="submit" id="game-submit">Adicionar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="feed-dialog" aria-labelledby="feed-dialog-title">
+  <form id="feed-form">
+    <h2 id="feed-dialog-title">Adicionar feed</h2>
+    <div class="fields">
+      <label class="field"><span>URL do feed</span>
+        <input name="url" type="url" required pattern="https?://.+" placeholder="https://exemplo.com/feed.xml" autocomplete="off">
+      </label>
+      <label class="field"><span>Nome</span>
+        <input name="name" maxlength="80" placeholder="O título do feed" autocomplete="off">
+      </label>
+      <p class="hint-text">Feeds RSS ou Atom. Os itens aparecem como jogos no Explorar.</p>
+      <p class="form-error" id="feed-error" hidden></p>
+    </div>
+    <div class="dialog-actions">
+      <button class="action" type="button" data-close>Cancelar</button>
+      <button class="action primary" type="submit" id="feed-submit">Adicionar</button>
     </div>
   </form>
 </dialog>
@@ -787,19 +809,41 @@
     });
   }
 
+  // Feeds cadastrados (`settings.feeds`) viram opções `feed:<n>` no seletor de loja.
+  const feedOf = (value) => (value.startsWith("feed:") ? settings.feeds[Number(value.slice(5))] : undefined);
+  function renderFeedOptions() {
+    for (const option of exploreStore.querySelectorAll("[data-feed]")) option.remove();
+    settings.feeds.forEach((feed, n) => {
+      const option = el("option", { value: `feed:${n}`, textContent: feed.name });
+      option.dataset.feed = "";
+      exploreStore.append(option);
+    });
+  }
+
   // Esconde o FANZA e o "+18" do itch.io sem a opção, e volta para itch.io/Populares.
   function refreshExploreOptions() {
     exploreStore.querySelector("[value=fanza]").hidden = !showAdult;
     exploreSort.querySelector("[value=nsfw]").hidden = !showAdult;
-    if (!showAdult && exploreStore.value === "fanza") exploreStore.value = "itch";
+    if ((!showAdult && exploreStore.value === "fanza") || exploreStore.selectedIndex < 0) exploreStore.value = "itch";
     if (!showAdult && exploreSort.value === "nsfw") exploreSort.value = "";
+    const isFeed = Boolean(feedOf(exploreStore.value));
     exploreSort.hidden = exploreStore.value !== "itch";
-    exploreDmmSort.hidden = exploreStore.value === "itch";
+    exploreDmmSort.hidden = exploreStore.value === "itch" || isFeed;
+    feedRemove.hidden = !isFeed;
+    resetFeedRemove();
     if (currentView === "explore") openExplore();
   }
 
   const exploreSortValue = () => (exploreStore.value === "itch" ? exploreSort : exploreDmmSort).value;
-  const exploreKey = () => `${exploreStore.value}|${exploreSortValue()}`;
+  const exploreKey = () => {
+    const feed = feedOf(exploreStore.value);
+    return feed ? `feed|${feed.url}` : `${exploreStore.value}|${exploreSortValue()}`;
+  };
+  function exploreRequest(page) {
+    const feed = feedOf(exploreStore.value);
+    if (feed) return { action: "list", store: "feed", url: feed.url };
+    return { action: "list", store: exploreStore.value, sort: exploreSortValue(), page };
+  }
 
   function openExplore() {
     if (explore.key !== exploreKey()) loadExplore(true);
@@ -813,7 +857,7 @@
     explore.error = "";
     renderExplore();
     const page = explore.page + 1;
-    const result = await exploreCall({ action: "list", store: exploreStore.value, sort: exploreSortValue(), page });
+    const result = await exploreCall(exploreRequest(page));
     if (explore.key !== key) return; // a escolha mudou no meio
     explore.loading = false;
     if (result.ok) {
@@ -831,7 +875,7 @@
     const play = el("button", { className: "action primary", textContent: "Jogar" });
     play.addEventListener("click", () => playExplored(item, play));
     const buttons = [play];
-    if (item.store === "itch") {
+    if (item.store === "itch" || item.store === "feed") {
       const add = el("button", { className: "action", textContent: "Adicionar" });
       add.addEventListener("click", () => addExplored(item));
       buttons.push(add);
@@ -868,7 +912,7 @@
     if (button.disabled) return;
     button.disabled = true;
     button.textContent = "Abrindo…";
-    const action = item.store === "itch" ? "play_itch" : "play_dmm";
+    const action = item.store === "dmm" || item.store === "fanza" ? "play_dmm" : "play_page";
     const result = await exploreCall({ action, ...item });
     button.disabled = false;
     button.textContent = "Jogar";
@@ -897,13 +941,88 @@
     refreshExploreOptions();
   });
   exploreMore.addEventListener("click", () => loadExplore(false));
-  exploreStore.value = load(localStorage, "exploreStore") ?? "itch";
-  if (exploreStore.selectedIndex < 0) exploreStore.value = "itch";
-  exploreSort.value = load(localStorage, "exploreSort") ?? "";
-  if (exploreSort.selectedIndex < 0) exploreSort.value = "";
-  exploreDmmSort.value = load(localStorage, "exploreDmmSort") ?? "popular";
-  if (exploreDmmSort.selectedIndex < 0) exploreDmmSort.value = "popular";
-  refreshExploreOptions();
+
+  // Cadastro de feed: só grava se o feed carregar (o nome vazio vira o título dele).
+  const feedDialog = document.getElementById("feed-dialog");
+  const feedForm = document.getElementById("feed-form");
+  const feedError = document.getElementById("feed-error");
+  const feedSubmit = document.getElementById("feed-submit");
+  const feedRemove = document.getElementById("feed-remove");
+
+  document.getElementById("feed-add").addEventListener("click", () => {
+    feedForm.reset();
+    feedError.hidden = true;
+    feedSubmit.disabled = false;
+    feedSubmit.textContent = "Adicionar";
+    feedDialog.showModal();
+    feedForm.url.focus();
+  });
+  feedDialog.querySelector("[data-close]").addEventListener("click", () => feedDialog.close());
+  feedDialog.addEventListener("click", (event) => { if (event.target === feedDialog) feedDialog.close(); });
+
+  feedForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const url = feedForm.url.value.trim();
+    if (settings.feeds.some((feed) => feed.url === url)) {
+      feedError.textContent = "Esse feed já está cadastrado.";
+      feedError.hidden = false;
+      return;
+    }
+    feedSubmit.disabled = true;
+    feedSubmit.textContent = "Lendo o feed…";
+    feedError.hidden = true;
+    const result = await exploreCall({ action: "list", store: "feed", url });
+    feedSubmit.disabled = false;
+    feedSubmit.textContent = "Adicionar";
+    if (!result.ok) {
+      feedError.textContent = result.error ?? "Não foi possível ler o feed.";
+      feedError.hidden = false;
+      return;
+    }
+    const name = feedForm.name.value.trim() || result.title || nameFromUrl(url);
+    settings.feeds.push({ name, url });
+    save();
+    renderFeedOptions();
+    exploreStore.value = `feed:${settings.feeds.length - 1}`;
+    store(localStorage, "exploreStore", exploreStore.value);
+    // Já carregado: mostra sem baixar de novo.
+    explore = { key: `feed|${url}`, items: result.items, page: 1, more: false, loading: false, error: "" };
+    feedDialog.close();
+    refreshExploreOptions();
+  });
+
+  // Remover pede confirmação: o primeiro clique só arma o botão.
+  function resetFeedRemove() {
+    feedRemove.classList.remove("confirm");
+    feedRemove.textContent = "Remover feed";
+  }
+  feedRemove.addEventListener("click", () => {
+    const n = Number(exploreStore.value.slice(5));
+    if (!feedOf(exploreStore.value)) return;
+    if (!feedRemove.classList.contains("confirm")) {
+      feedRemove.classList.add("confirm");
+      feedRemove.textContent = "Confirmar remoção";
+      return;
+    }
+    settings.feeds.splice(n, 1);
+    save();
+    renderFeedOptions();
+    exploreStore.value = "itch";
+    store(localStorage, "exploreStore", "itch");
+    refreshExploreOptions();
+  });
+
+  // Chamado no fim da página: usa `settings`, declarado mais abaixo.
+  function initExplore() {
+    renderFeedOptions();
+    exploreStore.value = load(localStorage, "exploreStore") ?? "itch";
+    if (exploreStore.selectedIndex < 0) exploreStore.value = "itch";
+    exploreSort.value = load(localStorage, "exploreSort") ?? "";
+    if (exploreSort.selectedIndex < 0) exploreSort.value = "";
+    exploreDmmSort.value = load(localStorage, "exploreDmmSort") ?? "popular";
+    if (exploreDmmSort.selectedIndex < 0) exploreDmmSort.value = "popular";
+    refreshExploreOptions();
+  }
 
   // ---- Links de compartilhamento ----
   // `webavenger://add?v=2&m=<base64url>`: o link carrega o próprio manifesto do jogo (só
@@ -1329,7 +1448,7 @@
   // ---- Configurações ----
   // `avengerSettings` e `avengerSaveSettings` são injetados pelo launcher.
   const settings = Object.assign(
-    { fullscreen_games: true, maximize_player: true, show_adult: false, input_translation: false, button_layout: "position", mappings: {} },
+    { fullscreen_games: true, maximize_player: true, show_adult: false, input_translation: false, button_layout: "position", mappings: {}, feeds: [] },
     window.avengerSettings);
   const fullscreenInput = document.getElementById("fullscreen-games");
   const maximizeInput = document.getElementById("maximize-player");
@@ -1378,6 +1497,7 @@
     showAdult = settings.show_adult;
     save(document.getElementById("saved-games"));
     renderLibrary(); // contagens e categorias da sidebar
+    explore.key = null; // as listas filtram +18 no launcher: recarrega
     refreshExploreOptions();
   });
   maximizeInput.addEventListener("change", () => {
@@ -1817,6 +1937,7 @@
 
   // Restaura a view aberta antes de ir para um jogo e voltar com F1.
   const showApps = itchReturn.has("itch") || pendingItchMessage || dmmReturn.has("dmm") || pendingDmmMessage;
+  initExplore();
   selectView(showApps ? "settings" : load(sessionStorage, "view") ?? "all");
   if (showApps) document.getElementById("connected-apps").scrollIntoView({ block: "center" });
 </script>

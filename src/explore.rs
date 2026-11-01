@@ -18,6 +18,8 @@ pub const REQUEST_MESSAGE: &str = "avenger.explore.request";
 /// Principal → renderização: `[id, json]`.
 pub const RESPONSE_MESSAGE: &str = "avenger.explore.response";
 
+/// Origem dos jogos temporários abertos pelo Explorar (rodam no perfil principal).
+const EXPLORE_SOURCE: &str = "Explorar";
 /// Tags que marcam um jogo do itch.io como +18 (as mesmas `ADULT_TAGS` da Biblioteca).
 const ADULT_TAGS: &[&str] = &["nsfw", "porn", "hentai", "adult", "erotic", "18+"];
 
@@ -53,9 +55,13 @@ pub fn handle_request(frame: &mut Frame, message: &ProcessMessage) -> bool {
                     Err(error) => reply(json!({ "ok": false, "error": error })),
                 }
             }
+            "feed" => match request["url"].as_str().filter(|url| is_http(url)) {
+                Some(url) => list_feed(url.to_string(), show_adult, reply),
+                None => reply(json!({ "ok": false, "error": "Endereço de feed inválido." })),
+            },
             other => reply(json!({ "ok": false, "error": format!("loja desconhecida: {other}") })),
         },
-        "play_itch" => play_itch(&request, show_adult, reply),
+        "play_page" => play_page(&request, show_adult, reply),
         "play_dmm" => play_dmm(&request, show_adult, reply),
         other => reply(json!({ "ok": false, "error": format!("ação desconhecida: {other}") })),
     }
@@ -84,6 +90,214 @@ fn itch_list_url(sort: &str, page: u64, show_adult: bool) -> Result<String, Stri
         other => return Err(format!("ordem desconhecida: {other}")),
     };
     Ok(format!("https://itch.io/games/{path}?format=json&page={page}"))
+}
+
+/// Feed RSS/Atom cadastrado pelo usuário (sem cookies).
+fn list_feed(url: String, show_adult: bool, reply: Reply) {
+    http::fetch(
+        http::Request::get(&url),
+        Box::new(move |result| {
+            let xml = match result {
+                Ok(response) if response.ok() => response.text(),
+                Ok(response) => return reply(json!({ "ok": false, "error": format!("o feed respondeu HTTP {}", response.status) })),
+                Err(error) => return reply(json!({ "ok": false, "error": error })),
+            };
+            let Some(feed) = parse_feed(&xml) else {
+                return reply(json!({ "ok": false, "error": "Esse endereço não é um feed RSS ou Atom." }));
+            };
+            let items: Vec<Value> = feed
+                .items
+                .into_iter()
+                .filter(|item| show_adult || !item.categories.iter().any(|c| ADULT_TAGS.contains(&c.to_lowercase().as_str())))
+                .map(|item| {
+                    let domain = item.link.split_once("://").map(|(_, rest)| rest).unwrap_or_default();
+                    let domain = domain.split(['/', '?', '#']).next().unwrap_or_default().trim_start_matches("www.");
+                    json!({
+                        "store": "feed",
+                        "id": item.link,
+                        "name": item.title,
+                        "description": item.description,
+                        "thumbnail": item.image,
+                        "page_url": item.link,
+                        "genre": domain,
+                    })
+                })
+                .collect();
+            reply(json!({ "ok": true, "title": feed.title, "more": false, "items": items }))
+        }),
+    );
+}
+
+#[derive(Debug, Default)]
+struct Feed {
+    title: Option<String>,
+    items: Vec<FeedItem>,
+}
+
+#[derive(Debug, Default, PartialEq)]
+struct FeedItem {
+    title: String,
+    link: String,
+    description: Option<String>,
+    image: Option<String>,
+    categories: Vec<String>,
+}
+
+/// Lê um feed RSS 2.0 (`<item>`) ou Atom (`<entry>`). Tolerante: não valida o XML, só
+/// procura os elementos conhecidos. `None` se não parecer um feed.
+fn parse_feed(xml: &str) -> Option<Feed> {
+    let (open, close) = if xml.contains("<rss") || xml.contains("<rdf:RDF") {
+        ("<item", "</item>")
+    } else if xml.contains("<feed") {
+        ("<entry", "</entry>")
+    } else {
+        return None;
+    };
+    let mut items = Vec::new();
+    let mut rest = xml;
+    let mut header = None;
+    while let Some(start) = find_tag(rest, open) {
+        header.get_or_insert(&rest[..start]);
+        let Some(end) = rest[start..].find(close) else { break };
+        let block = &rest[start..start + end];
+        rest = &rest[start + end + close.len()..];
+        let Some(title) = element_text(block, "title").filter(|t| !t.is_empty()) else { continue };
+        let link = element_text(block, "link")
+            .filter(|l| !l.is_empty())
+            .or_else(|| attribute(block, "<link", "href"))
+            .unwrap_or_default();
+        if !is_http(&link) {
+            continue;
+        }
+        let raw_description = ["description", "summary", "content:encoded", "content"]
+            .iter()
+            .find_map(|name| element_raw(block, name));
+        let image = ["<media:thumbnail", "<media:content"]
+            .iter()
+            .find_map(|tag| attribute(block, tag, "url"))
+            .or_else(|| {
+                find_tag(block, "<enclosure")
+                    .filter(|&at| block[at..].split('>').next().is_some_and(|tag| tag.contains("image/")))
+                    .and_then(|at| attribute(&block[at..], "<enclosure", "url"))
+            })
+            .or_else(|| raw_description.as_deref().and_then(|html| attribute(&decode(html), "<img", "src")))
+            .filter(|url| is_http(url));
+        let description = raw_description.map(|html| collapse(&strip_html(&decode(&html)))).filter(|d| !d.is_empty());
+        let mut categories = Vec::new();
+        let mut cats = block;
+        while let Some(at) = find_tag(cats, "<category") {
+            let tag = &cats[at..];
+            // RSS: `<category>texto</category>`; Atom: `<category term="…"/>`.
+            match attribute(tag, "<category", "term").or_else(|| element_text(tag, "category")) {
+                Some(category) if !category.is_empty() => categories.push(category),
+                _ => {}
+            }
+            cats = &tag[1..];
+        }
+        items.push(FeedItem { title, link, description, image, categories });
+    }
+    let title = element_text(header.unwrap_or(xml), "title").filter(|t| !t.is_empty());
+    Some(Feed { title, items })
+}
+
+/// Posição de `<nome` seguido de espaço, `>` ou `/` (para `<link` não casar com `<linkx`).
+fn find_tag(text: &str, open: &str) -> Option<usize> {
+    let mut from = 0;
+    while let Some(at) = text[from..].find(open) {
+        let at = from + at;
+        if matches!(text.as_bytes().get(at + open.len()), Some(b' ' | b'>' | b'/' | b'\n' | b'\t' | b'\r')) {
+            return Some(at);
+        }
+        from = at + open.len();
+    }
+    None
+}
+
+/// Conteúdo de `<nome …>…</nome>`, sem CDATA (ainda com entidades).
+fn element_raw(block: &str, name: &str) -> Option<String> {
+    let start = find_tag(block, &format!("<{name}"))?;
+    let tag_end = start + block[start..].find('>')?;
+    if block[..tag_end].ends_with('/') {
+        return None; // `<nome/>` vazio
+    }
+    let close = format!("</{name}>");
+    let end = tag_end + block[tag_end..].find(&close)?;
+    let inner = block[tag_end + 1..end].trim();
+    Some(match inner.strip_prefix("<![CDATA[").and_then(|s| s.strip_suffix("]]>")) {
+        // CDATA guarda o texto literal: as entidades não se aplicam, então são escapadas
+        // de volta para o `decode` posterior não mexer nelas.
+        Some(cdata) => cdata.replace('&', "&amp;"),
+        None => inner.to_string(),
+    })
+}
+
+fn element_text(block: &str, name: &str) -> Option<String> {
+    element_raw(block, name).map(|raw| collapse(&decode(&raw)))
+}
+
+/// Valor de `atributo="…"` (ou com aspas simples) na primeira tag `<nome`.
+fn attribute(block: &str, open: &str, name: &str) -> Option<String> {
+    let start = find_tag(block, open)?;
+    let tag = &block[start..start + block[start..].find('>')?];
+    for quote in ['"', '\''] {
+        let prefix = format!(" {name}={quote}");
+        if let Some(at) = tag.find(&prefix) {
+            let value = &tag[at + prefix.len()..];
+            return Some(decode(&value[..value.find(quote)?]));
+        }
+    }
+    None
+}
+
+/// Entidades XML/HTML, inclusive numéricas (`&#8217;`, `&#x27;`).
+fn decode(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("&#") {
+        out.push_str(&rest[..at]);
+        let entity = &rest[at + 2..];
+        let decoded = entity.find(';').filter(|&end| end <= 8).and_then(|end| {
+            let code = &entity[..end];
+            let value = match code.strip_prefix(['x', 'X']) {
+                Some(hex) => u32::from_str_radix(hex, 16).ok()?,
+                None => code.parse().ok()?,
+            };
+            Some((char::from_u32(value)?, end))
+        });
+        match decoded {
+            Some((c, end)) => {
+                out.push(c);
+                rest = &entity[end + 1..];
+            }
+            None => {
+                out.push_str("&#");
+                rest = entity;
+            }
+        }
+    }
+    out.push_str(rest);
+    crate::itch::sync::decode_html(&out.replace("&apos;", "'").replace("&nbsp;", " "))
+}
+
+fn strip_html(html: &str) -> String {
+    let mut out = String::with_capacity(html.len());
+    let mut in_tag = false;
+    for c in html.chars() {
+        match c {
+            '<' => in_tag = true,
+            '>' if in_tag => {
+                in_tag = false;
+                out.push(' ');
+            }
+            _ if !in_tag => out.push(c),
+            _ => {}
+        }
+    }
+    out
+}
+
+fn collapse(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 /// Lista de jogos de navegador do DMM (ou do FANZA, só com +18). `sort`: `new`,
@@ -220,13 +434,14 @@ wrap_set_cookie_callback! {
     }
 }
 
-/// Abre o jogo do itch.io numa janela, sem adicioná-lo à Biblioteca.
-fn play_itch(request: &Value, show_adult: bool, reply: Reply) {
-    let (Some(page_url), Some(itch_id)) = (request["page_url"].as_str(), request["id"].as_u64()) else {
+/// Abre o jogo de uma página (itch.io ou item de feed) numa janela, sem adicioná-lo à
+/// Biblioteca. Páginas que só incorporam o jogo (ex.: itch.io) abrem o jogo em si.
+fn play_page(request: &Value, show_adult: bool, reply: Reply) {
+    let Some(page_url) = request["page_url"].as_str().filter(|url| is_http(url)).map(str::to_string) else {
         return reply(json!({ "ok": false, "error": "jogo inválido" }));
     };
-    let name = request["name"].as_str().unwrap_or("Jogo do itch.io").to_string();
-    let page_url = page_url.to_string();
+    let name = request["name"].as_str().unwrap_or("Jogo").to_string();
+    let itch_id = request["id"].as_u64();
     page_info::fetch(
         page_url.clone(),
         false,
@@ -234,12 +449,10 @@ fn play_itch(request: &Value, show_adult: bool, reply: Reply) {
             if !show_adult && info.tags.iter().any(|tag| ADULT_TAGS.contains(&tag.as_str())) {
                 return reply(json!({ "ok": false, "error": "Jogo +18. Ligue \"Mostrar jogos +18\" para jogar." }));
             }
-            let Some(game_url) = info.game_url.clone() else {
-                return reply(json!({ "ok": false, "error": "Não foi possível achar o jogo nessa página." }));
-            };
+            let game_url = info.game_url.clone().unwrap_or_else(|| page_url.clone());
             // Temporário (não é gravado): roda no perfil principal, como os importados.
             let game = catalog::Game {
-                id: format!("explorar-itch-{itch_id}"),
+                id: format!("explorar-{:x}", hash(&page_url)),
                 name: info.title.clone().unwrap_or(name),
                 description: info.description.clone().unwrap_or_default(),
                 url: game_url.clone(),
@@ -248,8 +461,8 @@ fn play_itch(request: &Value, show_adult: bool, reply: Reply) {
                 tags: info.tags.clone(),
                 removed: false,
                 no_adblock: false,
-                source: Some(catalog::ITCH_SOURCE.into()),
-                itch_id: Some(itch_id),
+                source: Some(EXPLORE_SOURCE.into()),
+                itch_id,
                 dmm_id: None,
                 added_at: None,
             };
@@ -257,6 +470,18 @@ fn play_itch(request: &Value, show_adult: bool, reply: Reply) {
             reply(json!({ "ok": true }));
         }),
     );
+}
+
+fn hash(text: &str) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut hasher);
+    hasher.finish()
+}
+
+fn is_http(url: &str) -> bool {
+    let lower = url.to_ascii_lowercase();
+    lower.starts_with("https://") || lower.starts_with("http://")
 }
 
 /// Grava o jogo do DMM/FANZA na Biblioteca, como a sincronização faria, e o abre. O DMM
@@ -319,6 +544,52 @@ mod tests {
         );
         assert!(itch_list_url("nsfw", 1, false).is_err());
         assert!(itch_list_url("../x", 1, true).is_err());
+    }
+
+    #[test]
+    fn le_feed_rss() {
+        let xml = r#"<?xml version="1.0"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel>
+            <title><![CDATA[Catálogo & cia]]></title><link>https://github.com/x</link>
+            <image><url>https://github.com/fluidicon.png</url><title>Outro</title></image>
+            <item><title><![CDATA[⭐ 20 Minutes Till Dawn]]></title><link>https://gn-math.dev/?id=819</link>
+              <guid isPermaLink="false">c09a</guid><dc:creator><![CDATA[gn-math.dev]]></dc:creator></item>
+            <item><title>Jogo &amp; mais &#8217;</title><link>https://a.itch.io/jogo</link>
+              <description>&lt;p&gt;Texto &lt;b&gt;curto&lt;/b&gt;&lt;/p&gt;&lt;img src="https://img.exemplo/capa.png"&gt;</description>
+              <category>NSFW</category><category>Puzzle</category></item>
+            <item><title>Sem link</title></item>
+            <item><title>Arquivo</title><link>file:///etc/passwd</link></item>
+        </channel></rss>"#;
+        let feed = parse_feed(xml).unwrap();
+        assert_eq!(feed.title.as_deref(), Some("Catálogo & cia"));
+        assert_eq!(feed.items.len(), 2);
+        assert_eq!(feed.items[0], FeedItem {
+            title: "⭐ 20 Minutes Till Dawn".into(),
+            link: "https://gn-math.dev/?id=819".into(),
+            ..Default::default()
+        });
+        let second = &feed.items[1];
+        assert_eq!(second.title, "Jogo & mais \u{2019}");
+        assert_eq!(second.description.as_deref(), Some("Texto curto"));
+        assert_eq!(second.image.as_deref(), Some("https://img.exemplo/capa.png"));
+        assert_eq!(second.categories, ["NSFW", "Puzzle"]);
+    }
+
+    #[test]
+    fn le_feed_atom() {
+        let xml = r#"<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+            <title>Atom</title>
+            <entry><title type="html">Jogo</title><link rel="alternate" href="https://exemplo.org/jogo/"/>
+              <summary>Resumo</summary><category term="adult"/>
+              <media:thumbnail url="https://exemplo.org/t.jpg"/></entry>
+        </feed>"#;
+        let feed = parse_feed(xml).unwrap();
+        assert_eq!(feed.title.as_deref(), Some("Atom"));
+        let entry = &feed.items[0];
+        assert_eq!(entry.link, "https://exemplo.org/jogo/");
+        assert_eq!(entry.description.as_deref(), Some("Resumo"));
+        assert_eq!(entry.image.as_deref(), Some("https://exemplo.org/t.jpg"));
+        assert_eq!(entry.categories, ["adult"]);
+        assert!(parse_feed("<html><body>não é feed</body></html>").is_none());
     }
 
     #[test]

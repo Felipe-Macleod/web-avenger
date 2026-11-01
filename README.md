@@ -134,6 +134,8 @@ A aba **Explorar** lista jogos de navegador das lojas:
 - **itch.io:** ordenados por populares, mais bem avaliados, novos ou mais vendidos. **Jogar** abre o jogo numa janela sem adicioná-lo, e **Adicionar** abre o cadastro já preenchido.
 - **DMM GAMES** e **FANZA GAMES:** ordenados por populares, novos ou mais jogados. **Jogar** grava o jogo na Biblioteca, como a sincronização faria, e o abre. O DMM o coloca em マイゲーム ao iniciar, então ele continua na Biblioteca depois de sincronizar. Fora do Japão, use VPN.
 
+**+ Feed** cadastra um feed RSS ou Atom de qualquer site. Os itens viram jogos com **Jogar** e **Adicionar**, como os do itch.io. Os feeds ficam em `settings.json`.
+
 Com **Mostrar jogos +18** desligado, o FANZA e a ordem **+18** do itch.io somem. Nesse caso, a lista do itch.io é lida sem login, e a listagem anônima do itch.io não traz jogos adultos.
 
 ## Bloqueio de anúncios

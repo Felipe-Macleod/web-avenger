@@ -12,6 +12,13 @@ pub enum ButtonLayout {
     Label,
 }
 
+/// Feed RSS/Atom cadastrado na aba Explorar.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Feed {
+    pub name: String,
+    pub url: String,
+}
+
 /// Configurações do launcher, em `~/.config/web-avenger/settings.json`.
 ///
 /// Lidas pelo processo de renderização a cada página carregada, então mudanças
@@ -32,6 +39,8 @@ pub struct Settings {
     /// Mapeamentos manuais por controle (`"vendor:product"` → mapeamento).
     /// O formato é definido pelo tradutor em `assets/input-translation.js`.
     pub mappings: BTreeMap<String, serde_json::Value>,
+    /// Feeds do Explorar, na ordem do cadastro.
+    pub feeds: Vec<Feed>,
 }
 
 impl Default for Settings {
@@ -43,6 +52,7 @@ impl Default for Settings {
             input_translation: false,
             button_layout: ButtonLayout::default(),
             mappings: BTreeMap::new(),
+            feeds: Vec::new(),
         }
     }
 }
@@ -64,4 +74,15 @@ pub fn save(settings: &Settings) -> io::Result<()> {
         fs::create_dir_all(dir)?;
     }
     fs::write(path, serde_json::to_string_pretty(settings)?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn configuracao_antiga_sem_feeds() {
+        let settings: Settings = serde_json::from_str(r#"{"show_adult": true}"#).unwrap();
+        assert!(settings.show_adult && settings.feeds.is_empty() && settings.fullscreen_games);
+    }
 }

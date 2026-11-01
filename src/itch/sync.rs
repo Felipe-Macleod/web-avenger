@@ -248,7 +248,7 @@ fn attr_after(text: &str, prefix: &str) -> Option<String> {
     Some(decode_html(value))
 }
 
-fn decode_html(text: &str) -> String {
+pub(crate) fn decode_html(text: &str) -> String {
     text.replace("&amp;", "&").replace("&quot;", "\"").replace("&#39;", "'").replace("&lt;", "<").replace("&gt;", ">")
 }
 

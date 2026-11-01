@@ -1,5 +1,5 @@
 use cef::*;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 const VK_ESCAPE: i32 = 0x1B;
 const VK_F1: i32 = 0x70;
@@ -12,25 +12,8 @@ type OsKeyEvent = sys::XEvent;
 #[cfg(windows)]
 type OsKeyEvent = sys::MSG;
 
-/// Se a página atual é um jogo do catálogo (entrou pela Biblioteca).
-static IN_GAME: AtomicBool = AtomicBool::new(false);
-/// Browsers abertos (Biblioteca + jogo manual, ver `shell`).
+/// Browsers abertos (Biblioteca + janelas de jogos, ver `shell`).
 static OPEN_BROWSERS: AtomicUsize = AtomicUsize::new(0);
-/// Se a tela cheia atual foi ligada pela opção "Abrir jogos em tela cheia".
-static AUTO_FULLSCREEN: AtomicBool = AtomicBool::new(false);
-
-/// `scheme://host[:porta]` de uma URL.
-fn origin(url: &str) -> &str {
-    let after_scheme = url.find("://").map_or(0, |i| i + 3);
-    let end = url[after_scheme..].find(['/', '?', '#']).map_or(url.len(), |i| i + after_scheme);
-    &url[..end]
-}
-
-/// Se a URL é de um jogo da Biblioteca (mesma origem da URL cadastrada).
-fn is_catalog_game(url: &str) -> bool {
-    let origin = origin(url);
-    crate::catalog::load().iter().any(|game| self::origin(&game.url).eq_ignore_ascii_case(origin))
-}
 
 fn window_for(browser: Option<&mut Browser>) -> Option<Window> {
     browser_view_get_for_browser(browser)?.window()
@@ -90,10 +73,6 @@ wrap_display_handler! {
 
     impl DisplayHandler {
         fn on_title_change(&self, browser: Option<&mut Browser>, title: Option<&CefString>) {
-            // Só o browser visível dá nome à janela (jogos ocultos vão para about:blank).
-            if browser.as_deref().is_some_and(|browser| !crate::shell::is_active(browser)) {
-                return;
-            }
             let Some(window) = window_for(browser) else {
                 return;
             };
@@ -116,33 +95,15 @@ wrap_display_handler! {
                 return;
             }
             let url = url.map(CefString::to_string).unwrap_or_default();
-            if let Some(browser) = browser.as_deref() {
+            if let Some(browser) = browser {
                 crate::playtime::on_navigation(browser.identifier(), &url);
-            }
-            let Some(window) = window_for(browser) else {
-                return;
-            };
-
-            if crate::library::is_library_url(&url) {
-                IN_GAME.store(false, Ordering::Relaxed);
-                // De volta à Biblioteca: desfaz só a tela cheia que a opção ligou.
-                if AUTO_FULLSCREEN.swap(false, Ordering::Relaxed) && is_window_fullscreen(&window) {
-                    window.set_fullscreen(0);
-                }
-            } else if is_catalog_game(&url) && !IN_GAME.swap(true, Ordering::Relaxed) {
-                // Entrou num jogo do catálogo. Outras páginas (ex.: login do itch.io em
-                // Apps conectados) e a navegação dentro do jogo não mexem na tela cheia.
-                if crate::settings::load().fullscreen_games && !is_window_fullscreen(&window) {
-                    AUTO_FULLSCREEN.store(true, Ordering::Relaxed);
-                    window.set_fullscreen(1);
-                }
             }
         }
 
         fn on_fullscreen_mode_change(&self, browser: Option<&mut Browser>, fullscreen: i32) {
-            // Fullscreen pedido pela própria página (Fullscreen API). Se a janela já estava
-            // em tela cheia pela opção "Abrir jogos em tela cheia", continua nela.
-            if fullscreen == 0 && AUTO_FULLSCREEN.load(Ordering::Relaxed) && IN_GAME.load(Ordering::Relaxed) {
+            // Fullscreen pedido pela própria página (Fullscreen API). Se a janela do jogo
+            // abriu em tela cheia pela opção "Abrir jogos em tela cheia", continua nela.
+            if fullscreen == 0 && browser.as_deref().is_some_and(crate::shell::is_auto_fullscreen) {
                 return;
             }
             if let Some(window) = window_for(browser) {
@@ -180,7 +141,8 @@ wrap_keyboard_handler! {
                         host.exit_fullscreen(1);
                     }
                 }
-                VK_F1 => {
+                // Na janela de um jogo, o F1 vai para o jogo.
+                VK_F1 if !crate::shell::is_game_browser(browser) => {
                     if let Some(frame) = browser.main_frame() {
                         frame.load_url(Some(&CefString::from(crate::library_url())));
                     }
@@ -193,7 +155,7 @@ wrap_keyboard_handler! {
                     }
                 }
                 VK_F11 => {
-                    AUTO_FULLSCREEN.store(false, Ordering::Relaxed);
+                    crate::shell::clear_auto_fullscreen(browser);
                     if let Some(window) = window_for(Some(browser)) {
                         window.set_fullscreen((!is_window_fullscreen(&window)) as i32);
                     }
@@ -274,31 +236,14 @@ wrap_request_handler! {
                 return 0;
             }
 
-            if crate::shell::is_game_browser(browser) {
-                // F1 (ou qualquer volta à Biblioteca) no browser de um jogo manual:
-                // a Biblioteca vive no perfil principal, em outro browser.
-                if crate::library::is_library_url(&url) {
-                    post_task(ThreadId::UI, Some(&mut crate::shell::ShowLibraryTask::new()));
-                    return 1;
-                }
-            } else if let Some(game) = crate::profiles::manual_game_for(&url) {
-                // Jogo manual: abre num browser com o perfil próprio do jogo.
+            // Jogo aberto pela Biblioteca: vai para a janela própria dele.
+            if crate::shell::is_library_browser(browser)
+                && let Some(game) = crate::playtime::catalog_game_for(&url)
+            {
                 post_task(ThreadId::UI, Some(&mut crate::shell::OpenGameTask::new(game, url)));
                 return 1;
             }
             0
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::origin;
-
-    #[test]
-    fn origem_da_url() {
-        assert_eq!(origin("https://skate.aaddpp.lol"), "https://skate.aaddpp.lol");
-        assert_eq!(origin("https://html-classic.itch.zone/html/1/index.html?v=2"), "https://html-classic.itch.zone");
-        assert_eq!(origin("http://127.0.0.1:8080#x"), "http://127.0.0.1:8080");
     }
 }

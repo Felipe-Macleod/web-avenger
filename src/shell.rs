@@ -1,84 +1,79 @@
-//! Qual browser a janela mostra: a Biblioteca (perfil principal) ou um jogo manual
-//! (perfil próprio, ver `profiles`).
+//! Janelas do app: a da Biblioteca (perfil principal) e uma por jogo aberto.
 //!
-//! No CEF o perfil é fixo por browser, então cada jogo manual tem um `BrowserView` com
-//! o contexto dele. Todos ficam na janela e só um fica visível. O browser de um jogo
-//! é criado na primeira vez que ele abre e reaproveitado depois: ao voltar para a
-//! Biblioteca ele vai para uma página em branco e fica oculto, mas não fecha. No
-//! estilo Chrome, fechar o último browser de um perfil encerra o app (e fechar o
-//! browser de um view fora da janela derruba o CEF). Tudo roda na thread de UI do
-//! processo principal.
+//! Jogos manuais rodam no perfil próprio (ver `profiles`); os importados e os do
+//! catálogo embutido, no perfil principal (precisam da sessão do itch.io/DMM). Um jogo
+//! tem no máximo uma janela: o CEF não aceita dois browsers na mesma pasta de perfil.
+//! Fechar a Biblioteca não fecha os jogos; o app sai quando o último browser fecha (ver
+//! `client.rs`). Tudo roda na thread de UI do processo principal.
 
-use crate::{app::AvengerBrowserViewDelegate, catalog::Game, client::AvengerClient, profiles};
+use crate::{
+    app::{AvengerBrowserViewDelegate, AvengerWindowDelegate},
+    catalog::Game,
+    client::AvengerClient,
+    profiles,
+};
 use cef::*;
 use std::{cell::RefCell, collections::HashMap};
 
+struct GameWindow {
+    view: BrowserView,
+    /// `None` até o CEF criar a janela (`on_window_created`).
+    window: Option<Window>,
+    /// Se a tela cheia foi ligada pela opção "Abrir jogos em tela cheia".
+    auto_fullscreen: bool,
+}
+
+#[derive(Default)]
 struct Shell {
-    window: Window,
-    library: BrowserView,
-    /// Browser de cada jogo manual aberto nesta sessão (id do jogo → view).
-    games: HashMap<String, BrowserView>,
-    /// Jogo visível agora; `None` = Biblioteca.
-    current: Option<String>,
+    library: Option<BrowserView>,
+    /// Janela de cada jogo aberto (id do jogo → janela).
+    games: HashMap<String, GameWindow>,
 }
 
 thread_local! {
-    static SHELL: RefCell<Option<Shell>> = const { RefCell::new(None) };
-}
-
-pub fn init(window: Window, library: BrowserView) {
-    SHELL.with(|shell| {
-        *shell.borrow_mut() = Some(Shell { window, library, games: HashMap::new(), current: None })
-    });
-}
-
-pub fn clear() {
-    SHELL.with(|shell| shell.borrow_mut().take());
-}
-
-/// O browser visível na janela.
-pub fn active_view() -> Option<BrowserView> {
-    SHELL.with(|shell| {
-        let shell = shell.borrow();
-        let shell = shell.as_ref()?;
-        let game = shell.current.as_ref().and_then(|id| shell.games.get(id));
-        Some(game.unwrap_or(&shell.library).clone())
-    })
+    static SHELL: RefCell<Shell> = RefCell::new(Shell::default());
 }
 
 fn same_browser(view: &BrowserView, browser: &Browser) -> bool {
     view.browser().is_some_and(|own| own.is_same(Some(&mut browser.clone())) != 0)
 }
 
-fn load(view: &BrowserView, url: &str) {
-    if let Some(frame) = view.browser().and_then(|browser| browser.main_frame()) {
-        frame.load_url(Some(&CefString::from(url)));
+pub fn library_created(view: BrowserView) {
+    SHELL.with(|shell| shell.borrow_mut().library = Some(view));
+}
+
+pub fn library_closed() {
+    SHELL.with(|shell| shell.borrow_mut().library = None);
+    release_profiles_if_last();
+}
+
+/// Perfis de jogos ainda referenciados seguram o processo no estilo Chrome: sem soltá-los
+/// quando a última janela fecha, o `run_message_loop` não termina. Enquanto houver
+/// janelas, ficam guardados para reabrir o jogo no mesmo perfil.
+fn release_profiles_if_last() {
+    if SHELL.with(|shell| shell.borrow().library.is_none() && shell.borrow().games.is_empty()) {
+        profiles::release_all();
     }
 }
 
-/// Mostra `show` e esconde os outros views da janela.
-fn show_only(window: &Window, show: &BrowserView, others: &[BrowserView]) {
-    show.set_visible(1);
-    for view in others {
-        view.set_visible(0);
-    }
-    window.layout();
-    show.request_focus();
-}
-
-/// Abre um jogo manual no perfil dele, no lugar do browser visível.
+/// Abre o jogo na janela dele (ou traz para frente a que já está aberta).
 pub fn open_game(game: Game, url: String) {
-    // Já aberto nesta sessão: reaproveita o browser (o perfil já está inicializado).
-    let existing = SHELL.with(|shell| shell.borrow().as_ref().and_then(|shell| shell.games.get(&game.id).cloned()));
-    if let Some(view) = existing {
-        load(&view, &url);
-        return present(&game.id, &view);
+    let existing = SHELL.with(|shell| shell.borrow().games.get(&game.id).and_then(|game| game.window.clone()));
+    if let Some(window) = existing {
+        return window.activate();
     }
-    let id = game.id.clone();
-    profiles::with_context(&game, Box::new(move |context| create_game_view(&id, context, &url)));
+    if SHELL.with(|shell| shell.borrow().games.contains_key(&game.id)) {
+        return; // janela ainda sendo criada
+    }
+    if game.source.is_none() {
+        let (id, name) = (game.id.clone(), game.name.clone());
+        profiles::with_context(&game, Box::new(move |context| create_game_window(&id, &name, Some(context), &url)));
+    } else {
+        create_game_window(&game.id, &game.name, None, &url);
+    }
 }
 
-fn create_game_view(id: &str, mut context: RequestContext, url: &str) {
+fn create_game_window(id: &str, name: &str, mut context: Option<RequestContext>, url: &str) {
     let mut client = AvengerClient::new();
     let mut delegate = AvengerBrowserViewDelegate::new();
     let Some(view) = browser_view_create(
@@ -86,92 +81,82 @@ fn create_game_view(id: &str, mut context: RequestContext, url: &str) {
         Some(&CefString::from(url)),
         Some(&BrowserSettings::default()),
         None,
-        Some(&mut context),
+        context.as_mut(),
         Some(&mut delegate),
     ) else {
         eprintln!("[web-avenger] não foi possível abrir {url}");
         return;
     };
-    // O estado é atualizado antes de mexer na janela, e sem manter o `RefCell`
-    // emprestado: mexer nos views dispara callbacks (ex.: `on_before_browse`) que o consultam.
-    let Some(window) = SHELL.with(|shell| {
-        let mut shell = shell.borrow_mut();
-        let shell = shell.as_mut()?;
-        shell.games.insert(id.to_string(), view.clone());
-        Some(shell.window.clone())
-    }) else {
-        return;
-    };
-    window.add_child_view(Some(&mut View::from(&view)));
-    present(id, &view);
-}
-
-/// Torna o jogo `id` o view visível.
-fn present(id: &str, view: &BrowserView) {
-    let Some((window, others)) = SHELL.with(|shell| {
-        let mut shell = shell.borrow_mut();
-        let shell = shell.as_mut()?;
-        shell.current = Some(id.to_string());
-        let others = shell
+    // Registrado antes de criar a janela, e sem manter o `RefCell` emprestado: a criação
+    // dispara callbacks (ex.: `on_before_browse`) que o consultam.
+    let auto_fullscreen = crate::settings::load().fullscreen_games;
+    SHELL.with(|shell| {
+        shell
+            .borrow_mut()
             .games
-            .iter()
-            .filter(|(other, _)| other.as_str() != id)
-            .map(|(_, view)| view.clone())
-            .chain([shell.library.clone()])
-            .collect::<Vec<_>>();
-        Some((shell.window.clone(), others))
-    }) else {
-        return;
-    };
-    show_only(&window, view, &others);
+            .insert(id.to_string(), GameWindow { view: view.clone(), window: None, auto_fullscreen })
+    });
+    let mut delegate = AvengerWindowDelegate::new(RefCell::new(Some(view)), Some(id.to_string()), name.to_string());
+    window_create_top_level(Some(&mut delegate));
 }
 
-/// Volta para a Biblioteca; o jogo vai para uma página em branco (para o som e a CPU).
-pub fn show_library() {
-    let Some((window, library, game)) = SHELL.with(|shell| {
+/// A janela do jogo `id` foi criada; liga a tela cheia se a opção pedir.
+pub fn game_window_created(id: &str, window: &Window) {
+    let auto_fullscreen = SHELL.with(|shell| {
         let mut shell = shell.borrow_mut();
-        let shell = shell.as_mut()?;
-        let id = shell.current.take()?;
-        Some((shell.window.clone(), shell.library.clone(), shell.games.get(&id).cloned()?))
-    }) else {
-        return;
-    };
-    show_only(&window, &library, std::slice::from_ref(&game));
-    load(&game, "about:blank");
-    // Recarrega para atualizar "Recentes" (e passar pela saída da tela cheia).
-    load(&library, crate::library_url());
-}
-
-/// Se o browser é o que está visível na janela.
-pub fn is_active(browser: &Browser) -> bool {
-    active_view().is_none_or(|view| same_browser(&view, browser))
-}
-
-/// Se o browser é o de um jogo manual (e não a Biblioteca).
-pub fn is_game_browser(browser: &Browser) -> bool {
-    let games: Vec<BrowserView> =
-        SHELL.with(|shell| shell.borrow().as_ref().map(|shell| shell.games.values().cloned().collect()).unwrap_or_default());
-    games.iter().any(|view| same_browser(view, browser))
-}
-
-/// Fechamento da janela: fecha os jogos e pede à Biblioteca para fechar. Retorna se a
-/// janela já pode fechar (`try_close_browser` da Biblioteca).
-pub fn close_all() -> i32 {
-    let Some((library, games)) = SHELL.with(|shell| {
-        let shell = shell.borrow();
-        let shell = shell.as_ref()?;
-        Some((shell.library.clone(), shell.games.values().cloned().collect::<Vec<_>>()))
-    }) else {
-        return 1;
-    };
-    for game in games {
-        if let Some(host) = game.browser().and_then(|browser| browser.host()) {
-            host.close_browser(1);
-        }
+        let game = shell.games.get_mut(id)?;
+        game.window = Some(window.clone());
+        Some(game.auto_fullscreen)
+    });
+    if auto_fullscreen == Some(true) {
+        window.set_fullscreen(1);
     }
-    match library.browser().and_then(|browser| browser.host()) {
-        Some(host) => host.try_close_browser(),
-        None => 1,
+}
+
+/// A janela do jogo `id` fechou: recarrega a Biblioteca (para atualizar "Recentes").
+pub fn game_window_closed(id: &str) {
+    let library = SHELL.with(|shell| {
+        let mut shell = shell.borrow_mut();
+        shell.games.remove(id);
+        shell.library.clone()
+    });
+    release_profiles_if_last();
+    if let Some(frame) = library.and_then(|view| view.browser()).and_then(|browser| browser.main_frame()) {
+        frame.load_url(Some(&CefString::from(crate::library_url())));
+    }
+}
+
+/// Se o browser é o da Biblioteca.
+pub fn is_library_browser(browser: &Browser) -> bool {
+    SHELL.with(|shell| shell.borrow().library.clone()).is_some_and(|view| same_browser(&view, browser))
+}
+
+/// Id do jogo cuja janela tem o browser. Os views são copiados antes da comparação
+/// para não manter o `RefCell` emprestado durante chamadas ao CEF.
+fn game_of(browser: &Browser) -> Option<String> {
+    let games: Vec<(String, BrowserView)> =
+        SHELL.with(|shell| shell.borrow().games.iter().map(|(id, game)| (id.clone(), game.view.clone())).collect());
+    games.into_iter().find(|(_, view)| same_browser(view, browser)).map(|(id, _)| id)
+}
+
+/// Se o browser é o de uma janela de jogo (e não a Biblioteca).
+pub fn is_game_browser(browser: &Browser) -> bool {
+    game_of(browser).is_some()
+}
+
+/// Se a janela do browser está em tela cheia pela opção "Abrir jogos em tela cheia".
+pub fn is_auto_fullscreen(browser: &Browser) -> bool {
+    game_of(browser).is_some_and(|id| SHELL.with(|shell| shell.borrow().games.get(&id).is_some_and(|g| g.auto_fullscreen)))
+}
+
+/// O usuário mexeu na tela cheia (F11): ela deixa de ser da opção.
+pub fn clear_auto_fullscreen(browser: &Browser) {
+    if let Some(id) = game_of(browser) {
+        SHELL.with(|shell| {
+            if let Some(game) = shell.borrow_mut().games.get_mut(&id) {
+                game.auto_fullscreen = false;
+            }
+        });
     }
 }
 
@@ -184,16 +169,6 @@ wrap_task! {
     impl Task {
         fn execute(&self) {
             open_game(self.game.clone(), self.url.clone());
-        }
-    }
-}
-
-wrap_task! {
-    pub struct ShowLibraryTask;
-
-    impl Task {
-        fn execute(&self) {
-            show_library();
         }
     }
 }

@@ -34,7 +34,7 @@ A pasta `dist\web-avenger\` é autocontida: basta copiá-la para outra máquina 
 
 | Tecla | Ação |
 |-------|------|
-| `F1`  | Voltar para a Biblioteca |
+| `F1`  | Voltar para a Biblioteca (na janela dela; nas janelas de jogo a tecla vai para o jogo) |
 | `F11` | Tela cheia |
 | `F5`  | Recarregar (ignorando cache) |
 
@@ -75,7 +75,7 @@ No menu do card (botão direito), **Compartilhar (copiar link)** copia um link c
 
 ## Tempo de jogo e ordenação
 
-O launcher mede o tempo que cada jogo fica aberto (de entrar no jogo até voltar para a Biblioteca ou fechar a janela) e a última vez jogado. Os cards mostram, por exemplo, "3 h 12 min · há 2 dias"; **Recentes** na sidebar lista os jogos já jogados, do mais recente ao mais antigo. Os dados ficam em `~/.local/share/web-avenger/playtime.json` (gravados também a cada minuto, para não perder tempo se o app cair).
+O launcher mede o tempo que cada jogo fica aberto (de abrir a janela do jogo até fechá-la; vários jogos abertos contam juntos) e a última vez jogado. Os cards mostram, por exemplo, "3 h 12 min · há 2 dias"; **Recentes** na sidebar lista os jogos já jogados, do mais recente ao mais antigo. Os dados ficam em `~/.local/share/web-avenger/playtime.json` (gravados também a cada minuto, para não perder tempo se o app cair).
 
 O seletor na barra superior ordena a Biblioteca por **Recentes** (último jogado ou recém adicionado), **Nome** ou **Tempo de jogo**.
 
@@ -83,7 +83,7 @@ O seletor na barra superior ordena a Biblioteca por **Recentes** (último jogado
 
 O item **Configurações** da sidebar (salva em `~/.config/web-avenger/settings.json`) tem:
 
-- **Abrir jogos em tela cheia** (ligada por padrão): a janela entra em tela cheia ao abrir um jogo e sai ao voltar para a Biblioteca (`F1`). `F11` continua alternando manualmente.
+- **Abrir jogos em tela cheia** (ligada por padrão): a janela do jogo já abre em tela cheia. `F11` continua alternando manualmente.
 - **Maximizar o player do jogo** (ligada por padrão): players Unity WebGL (template padrão do Unity 2020+ e do UnityLoader antigo) ocupam a janela inteira mantendo a proporção, sem o rodapé; jogos do DMM GAMES / FANZA GAMES também: o jogo é ampliado sem o resto da página, usando o enquadramento mais próximo de 16:9 entre só o canvas do jogo (recortado do iframe) e o iframe inteiro (ex.: com a barra da loja), e o jogo recebe um `devicePixelRatio` multiplicado pela escala, para motores como Unity e Cocos renderizarem na resolução da tela em vez de esticar a imagem (`assets/player-fit.js`).
 - **Mostrar jogos +18** (desligada por padrão): desligada, esconde da Biblioteca (grade, contagens, categorias e Recentes) os jogos com as tags `nsfw`, `porn`, `hentai`, `adult`, `erotic` ou `18+`.
 - **Tradução de input**: apresenta controles que não são de Xbox (ex.: Switch Pro Controller, DualSense) aos jogos como um controle de Xbox (`mapping: "standard"`, id XInput). No Linux, controles da Nintendo e da PlayStation, que o Chromium não enxerga direito com os drivers do kernel (`hid-nintendo`, `hid-playstation`), são lidos direto do `/dev/input/js*` pelo launcher (`src/native_pads.rs`) e traduzidos pelo código evdev de cada botão (`BTN_SOUTH` → A etc.). No Windows o próprio Chromium já lê esses controles.

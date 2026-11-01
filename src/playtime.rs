@@ -1,8 +1,8 @@
 //! Tempo de jogo e última vez jogado, por jogo.
 //!
 //! O processo principal mede: entrar num jogo do catálogo (navegação do frame
-//! principal, ver `client.rs`) abre uma sessão; ir para a Biblioteca, para
-//! `about:blank` (jogo estacionado, ver `shell.rs`) ou fechar o browser a encerra.
+//! principal, ver `client.rs`) abre uma sessão; sair dele ou fechar a janela do jogo a
+//! encerra. Cada browser tem a sua sessão (vários jogos podem estar abertos).
 //! Os totais ficam em `~/.local/share/web-avenger/playtime.json`, que a Biblioteca lê
 //! por `avengerStats()`.
 
@@ -10,7 +10,7 @@ use crate::{catalog, profiles};
 use cef::*;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     fs, io,
     path::{Path, PathBuf},
     sync::{
@@ -37,13 +37,13 @@ pub type AllStats = BTreeMap<String, Stats>;
 
 struct Session {
     game_id: String,
-    browser_id: i32,
     /// Desde quando o tempo ainda não foi gravado.
     since: Instant,
 }
 
-static SESSION: Mutex<Option<Session>> = Mutex::new(None);
-/// Geração da sessão atual: heartbeats de sessões antigas param sozinhos.
+/// Sessões em andamento, por browser.
+static SESSIONS: Mutex<Option<HashMap<i32, Session>>> = Mutex::new(None);
+/// Geração do heartbeat atual: um heartbeat antigo para sozinho.
 static GENERATION: AtomicU64 = AtomicU64::new(0);
 
 fn path() -> PathBuf {
@@ -100,28 +100,29 @@ fn catalog_game_in(games: Vec<catalog::Game>, url: &str) -> Option<catalog::Game
 /// Navegação do frame principal de um browser (`on_address_change`).
 pub fn on_navigation(browser_id: i32, url: &str) {
     let game = catalog_game_for(url);
-    let Ok(mut session) = SESSION.lock() else {
+    let Ok(mut sessions) = SESSIONS.lock() else {
         return;
     };
-    match (session.as_ref(), &game) {
-        // Navegação dentro do jogo em andamento.
-        (Some(current), Some(game)) if current.browser_id == browser_id && current.game_id == game.id => return,
-        // Outro browser saindo de um jogo que não é o da sessão (ex.: o estacionado).
-        (Some(current), None) if current.browser_id != browser_id => return,
-        _ => {}
+    let sessions = sessions.get_or_insert_with(HashMap::new);
+    // Navegação dentro do jogo em andamento.
+    if let (Some(current), Some(game)) = (sessions.get(&browser_id), &game)
+        && current.game_id == game.id
+    {
+        return;
     }
-    if let Some(mut finished) = session.take() {
+    if let Some(mut finished) = sessions.remove(&browser_id) {
         flush(&mut finished);
     }
-    if let Some(game) = game {
-        let mut started = Session { game_id: game.id, browser_id, since: Instant::now() };
-        // Marca "último jogado" já na entrada (com 0 s).
-        if let Err(err) = record(&path(), &started.game_id, 0, now()) {
-            eprintln!("[web-avenger] falha ao gravar o tempo de jogo: {err}");
-        }
-        started.since = Instant::now();
-        *session = Some(started);
-        drop(session);
+    let Some(game) = game else {
+        return;
+    };
+    // Marca "último jogado" já na entrada (com 0 s).
+    if let Err(err) = record(&path(), &game.id, 0, now()) {
+        eprintln!("[web-avenger] falha ao gravar o tempo de jogo: {err}");
+    }
+    let first = sessions.is_empty();
+    sessions.insert(browser_id, Session { game_id: game.id, since: Instant::now() });
+    if first {
         let generation = GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
         post_delayed_task(ThreadId::UI, Some(&mut HeartbeatTask::new(generation)), HEARTBEAT_MS);
     }
@@ -129,19 +130,8 @@ pub fn on_navigation(browser_id: i32, url: &str) {
 
 /// O browser fechou: encerra a sessão dele, se houver.
 pub fn on_browser_closed(browser_id: i32) {
-    let Ok(mut session) = SESSION.lock() else {
-        return;
-    };
-    if session.as_ref().is_some_and(|current| current.browser_id == browser_id) {
-        if let Some(mut finished) = session.take() {
-            flush(&mut finished);
-        }
-    }
-}
-
-/// Encerra qualquer sessão (janela fechando).
-pub fn end_all() {
-    if let Some(mut finished) = SESSION.lock().ok().and_then(|mut session| session.take()) {
+    let finished = SESSIONS.lock().ok().and_then(|mut sessions| sessions.as_mut()?.remove(&browser_id));
+    if let Some(mut finished) = finished {
         flush(&mut finished);
     }
 }
@@ -154,16 +144,15 @@ wrap_task! {
     impl Task {
         fn execute(&self) {
             if self.generation != GENERATION.load(Ordering::Relaxed) {
-                return; // outra sessão começou e tem o próprio heartbeat
+                return; // um heartbeat mais novo assumiu
             }
-            let Ok(mut session) = SESSION.lock() else {
+            let Ok(mut sessions) = SESSIONS.lock() else {
                 return;
             };
-            let Some(current) = session.as_mut() else {
-                return; // sessão acabou: o heartbeat para
+            let Some(sessions) = sessions.as_mut().filter(|sessions| !sessions.is_empty()) else {
+                return; // sem sessões: o heartbeat para
             };
-            flush(current);
-            drop(session);
+            sessions.values_mut().for_each(flush);
             post_delayed_task(ThreadId::UI, Some(&mut HeartbeatTask::new(self.generation)), HEARTBEAT_MS);
         }
     }

@@ -5,7 +5,7 @@
 //! IndexedDB e cache isolados do resto do app. A Biblioteca e os jogos importados do
 //! itch.io continuam no perfil principal (precisam da sessão do itch.io).
 
-use crate::catalog::{self, Game};
+use crate::catalog::Game;
 use cef::*;
 use std::{
     cell::RefCell,
@@ -42,15 +42,6 @@ pub fn matches(game_url: &str, url: &str) -> bool {
     };
     let dir = dir.trim_end_matches('/');
     url.len() > dir.len() && url[..dir.len()].eq_ignore_ascii_case(dir) && url.as_bytes()[dir.len()] == b'/'
-}
-
-/// O jogo manual (perfil próprio) para o qual a URL navega, se houver.
-pub fn manual_game_for(url: &str) -> Option<Game> {
-    manual_game_in(&catalog::load(), url).cloned()
-}
-
-fn manual_game_in<'a>(games: &'a [Game], url: &str) -> Option<&'a Game> {
-    games.iter().find(|game| game.source.is_none() && matches(&game.url, url))
 }
 
 pub type OnReady = Box<dyn FnOnce(RequestContext)>;
@@ -168,18 +159,6 @@ mod tests {
         assert!(!matches(unity, "https://html-classic.itch.zone/html/19260993/index.html"));
         assert!(!matches(unity, "https://html-classic.itch.zone/html/61822120/index.html"));
         assert!(!matches("https://a.com/jogo", "https://a.com/jogo2"));
-    }
-
-    #[test]
-    fn so_jogos_manuais_tem_perfil_proprio() {
-        let games = [
-            game("colorful-path", "https://html-classic.itch.zone/html/6182212/index.html", None),
-            game("polytrack", "https://html-classic.itch.zone/html/19260993/index.html", Some("itch.io")),
-        ];
-        let found = |url| manual_game_in(&games, url).map(|g| g.id.as_str());
-        assert_eq!(found("https://html-classic.itch.zone/html/6182212/index.html"), Some("colorful-path"));
-        assert_eq!(found("https://html-classic.itch.zone/html/19260993/index.html"), None);
-        assert_eq!(found("file:///x/web-avenger/library.html"), None);
     }
 
     #[test]

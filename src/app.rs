@@ -79,15 +79,18 @@ wrap_browser_process_handler! {
                 Some(&mut delegate),
             );
 
-            let mut delegate = AvengerWindowDelegate::new(RefCell::new(browser_view));
+            let mut delegate = AvengerWindowDelegate::new(RefCell::new(browser_view), None, "Web Avenger".into());
             window_create_top_level(Some(&mut delegate));
         }
     }
 }
 
+// Janela da Biblioteca (`game: None`) ou de um jogo (ver `shell`).
 wrap_window_delegate! {
-    struct AvengerWindowDelegate {
+    pub struct AvengerWindowDelegate {
         browser_view: RefCell<Option<BrowserView>>,
+        game: Option<String>,
+        title: String,
     }
 
     impl ViewDelegate {
@@ -108,12 +111,15 @@ wrap_window_delegate! {
             let (Some(window), Some(browser_view)) = (window, browser_view.as_ref()) else {
                 return;
             };
-            window.set_title(Some(&CefString::from("Web Avenger")));
+            window.set_title(Some(&CefString::from(self.title.as_str())));
             let mut view = View::from(browser_view);
             window.add_child_view(Some(&mut view));
             window.show();
             browser_view.request_focus();
-            crate::shell::init(window.clone(), browser_view.clone());
+            match &self.game {
+                Some(id) => crate::shell::game_window_created(id, window),
+                None => crate::shell::library_created(browser_view.clone()),
+            }
         }
 
         fn on_window_fullscreen_transition(&self, window: Option<&mut Window>, is_completed: i32) {
@@ -128,12 +134,11 @@ wrap_window_delegate! {
         }
 
         fn on_window_destroyed(&self, _window: Option<&mut Window>) {
-            crate::playtime::end_all();
             *self.browser_view.borrow_mut() = None;
-            crate::shell::clear();
-            // Perfis de jogos ainda referenciados seguram o processo no estilo Chrome:
-            // sem soltá-los aqui, o `run_message_loop` não termina.
-            crate::profiles::release_all();
+            match &self.game {
+                Some(id) => crate::shell::game_window_closed(id),
+                None => crate::shell::library_closed(),
+            }
         }
 
         // No cef-rs, os métodos não implementados retornam 0 (no CEF em C++ o padrão é
@@ -153,8 +158,11 @@ wrap_window_delegate! {
         }
 
         fn can_close(&self, _window: Option<&mut Window>) -> i32 {
-            // Fecha o jogo manual aberto (se houver) e a Biblioteca.
-            crate::shell::close_all()
+            // Só o browser desta janela; as outras continuam abertas.
+            match self.browser_view.borrow().as_ref().and_then(|view| view.browser()).and_then(|b| b.host()) {
+                Some(host) => host.try_close_browser(),
+                None => 1,
+            }
         }
     }
 }
@@ -165,7 +173,7 @@ impl AvengerWindowDelegate {
         if window.is_none_or(|window| is_window_fullscreen(window)) {
             return;
         }
-        let browser = crate::shell::active_view().and_then(|view| view.browser());
+        let browser = self.browser_view.borrow().as_ref().and_then(|view| view.browser());
         if let Some(host) = browser.and_then(|browser| browser.host())
             && host.is_fullscreen() != 0
         {

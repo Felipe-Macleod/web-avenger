@@ -707,41 +707,62 @@
   search.addEventListener("input", renderLibrary);
 
   // ---- Links de compartilhamento ----
-  // `webavenger://add?v=1&m=<base64url do JSON>`: o link carrega o próprio manifesto do
-  // jogo (só os campos públicos), então funciona sem servidor e para qualquer pessoa.
+  // `webavenger://add?v=2&m=<base64url>`: o link carrega o próprio manifesto do jogo (só
+  // os campos públicos), então funciona sem servidor e para qualquer pessoa. Na v2 o
+  // manifesto é um array `[nome, url, site, descrição, capa, tags]` comprimido com
+  // deflate; a v1 (JSON com chaves, sem compressão) continua sendo lida.
   const SHARE_PREFIX = "webavenger://add?";
-  const SHARE_VERSION = "1";
+  const SHARE_VERSION = "2";
+  const MANIFEST_FIELDS = ["name", "url", "homepage", "description", "thumbnail", "tags"];
   const isHttp = (value) => typeof value === "string" && /^https?:\/\/.+/i.test(value);
 
-  function toBase64Url(text) {
+  function toBase64Url(bytes) {
     let binary = "";
-    for (const byte of new TextEncoder().encode(text)) binary += String.fromCharCode(byte);
+    for (const byte of bytes) binary += String.fromCharCode(byte);
     return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
 
   function fromBase64Url(data) {
     const binary = atob(data.replace(/-/g, "+").replace(/_/g, "/"));
-    return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
+    return Uint8Array.from(binary, (c) => c.charCodeAt(0));
   }
 
-  function shareLink(game) {
-    const manifest = { name: game.name, url: game.url };
-    if (isHttp(game.homepage)) manifest.homepage = game.homepage;
-    if (game.description) manifest.description = game.description;
-    if (isHttp(game.thumbnail)) manifest.thumbnail = game.thumbnail; // `data:`/`file:` não servem para outra pessoa
-    if (game.tags?.length) manifest.tags = game.tags;
-    return `${SHARE_PREFIX}v=${SHARE_VERSION}&m=${toBase64Url(JSON.stringify(manifest))}`;
+  async function transform(bytes, stream) {
+    return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+  }
+  const decodeUtf8 = (bytes) => new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+
+  async function shareLink(game) {
+    const values = [
+      game.name,
+      game.url,
+      isHttp(game.homepage) ? game.homepage : "",
+      game.description || "",
+      isHttp(game.thumbnail) ? game.thumbnail : "", // `data:`/`file:` não servem para outra pessoa
+      game.tags ?? [],
+    ];
+    while (values.length > 2 && !values.at(-1)?.length) values.pop(); // campos vazios no fim
+    const packed = await transform(new TextEncoder().encode(JSON.stringify(values)), new CompressionStream("deflate-raw"));
+    return `${SHARE_PREFIX}v=${SHARE_VERSION}&m=${toBase64Url(packed)}`;
+  }
+
+  async function readManifest(version, data) {
+    if (version === "1") return JSON.parse(decodeUtf8(fromBase64Url(data)));
+    const values = JSON.parse(decodeUtf8(await transform(fromBase64Url(data), new DecompressionStream("deflate-raw"))));
+    if (!Array.isArray(values)) return null;
+    return Object.fromEntries(MANIFEST_FIELDS.map((field, i) => [field, values[i]]));
   }
 
   // O link vem de terceiros: só aceita os campos conhecidos, com tipo e tamanho válidos.
-  function parseShareLink(text) {
+  async function parseShareLink(text) {
     text = text.trim();
     if (!text.toLowerCase().startsWith(SHARE_PREFIX)) return { error: "Este não é um link de jogo do Web Avenger." };
     const params = new URLSearchParams(text.slice(SHARE_PREFIX.length));
-    if (params.get("v") !== SHARE_VERSION) return { error: "Link criado por uma versão diferente do Web Avenger." };
+    const version = params.get("v");
+    if (version !== "1" && version !== SHARE_VERSION) return { error: "Link criado por uma versão diferente do Web Avenger." };
     let manifest;
     try {
-      manifest = JSON.parse(fromBase64Url(params.get("m") ?? ""));
+      manifest = await readManifest(version, params.get("m") ?? "");
     } catch {
       return { error: "Link incompleto ou corrompido." };
     }
@@ -787,7 +808,7 @@
 
   async function shareGame(game) {
     try {
-      await copyText(shareLink(game));
+      await copyText(await shareLink(game));
       showToast(`Link de ${game.name} copiado`);
     } catch (err) {
       showToast(`Não foi possível copiar o link: ${err.message ?? err}`);
@@ -910,8 +931,8 @@
 
   // Link compartilhado: preenche a etapa 2 direto, sem buscar a página. O cadastro só
   // é gravado quando o usuário confirma.
-  function importShareLink(text) {
-    const { game, error } = parseShareLink(text);
+  async function importShareLink(text) {
+    const { game, error } = await parseShareLink(text);
     if (error) {
       urlStatus.textContent = error;
       urlForm.url.focus();

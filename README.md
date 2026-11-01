@@ -71,7 +71,7 @@ Entradas com o mesmo `id` de um jogo embutido substituem a original.
 
 ## Compartilhar jogos
 
-No menu do card (botão direito), **Compartilhar (copiar link)** copia um link como `webavenger://add?v=1&m=…`. O link carrega o próprio cadastro do jogo (nome, URL, página, descrição, capa `http(s)` e tags, em JSON codificado em base64url), então não depende de servidor. Quem recebe cola o link no campo de URL de **+ Adicionar** e o cadastro já aparece preenchido para revisar; nada é gravado antes de clicar em **Adicionar**. Jogos importados do itch.io viram jogos manuais para quem recebe.
+No menu do card (botão direito), **Compartilhar (copiar link)** copia um link como `webavenger://add?v=2&m=…`. O link carrega o próprio cadastro do jogo (nome, URL, página, descrição, capa `http(s)` e tags, num array JSON comprimido com deflate e codificado em base64url), então não depende de servidor. Links `v=1` (JSON sem compressão) continuam sendo aceitos. Quem recebe cola o link no campo de URL de **+ Adicionar** e o cadastro já aparece preenchido para revisar; nada é gravado antes de clicar em **Adicionar**. Jogos importados do itch.io viram jogos manuais para quem recebe.
 
 ## Tempo de jogo e ordenação
 

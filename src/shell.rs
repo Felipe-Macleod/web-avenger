@@ -25,7 +25,7 @@ struct GameWindow {
 
 #[derive(Default)]
 struct Shell {
-    library: Option<BrowserView>,
+    library: Option<(Window, BrowserView)>,
     /// Janela de cada jogo aberto (id do jogo → janela).
     games: HashMap<String, GameWindow>,
 }
@@ -38,8 +38,41 @@ fn same_browser(view: &BrowserView, browser: &Browser) -> bool {
     view.browser().is_some_and(|own| own.is_same(Some(&mut browser.clone())) != 0)
 }
 
-pub fn library_created(view: BrowserView) {
-    SHELL.with(|shell| shell.borrow_mut().library = Some(view));
+/// Abre a janela da Biblioteca (ou traz para frente a que já está aberta).
+pub fn open_library() {
+    if let Some(window) = SHELL.with(|shell| shell.borrow().library.as_ref().map(|(window, _)| window.clone())) {
+        return window.activate();
+    }
+    let mut client = AvengerClient::new();
+    let mut delegate = AvengerBrowserViewDelegate::new();
+    let view = browser_view_create(
+        Some(&mut client),
+        Some(&CefString::from(crate::library_url())),
+        Some(&BrowserSettings::default()),
+        None,
+        None,
+        Some(&mut delegate),
+    );
+    let mut delegate = AvengerWindowDelegate::new(RefCell::new(view), None, "Web Avenger".into());
+    window_create_top_level(Some(&mut delegate));
+}
+
+/// Abre o que a linha de comando pede: o jogo de `--game=<id>` (atalho da área de
+/// trabalho) ou a Biblioteca.
+pub fn open_from_command_line(command_line: &CommandLine) {
+    let id = CefStringUtf16::from(&command_line.switch_value(Some(&CefString::from(crate::shortcut::GAME_SWITCH))))
+        .to_string();
+    match crate::catalog::load().into_iter().find(|game| !id.is_empty() && game.id == id) {
+        Some(game) => {
+            let url = game.url.clone();
+            open_game(game, url);
+        }
+        None => open_library(),
+    }
+}
+
+pub fn library_created(window: Window, view: BrowserView) {
+    SHELL.with(|shell| shell.borrow_mut().library = Some((window, view)));
 }
 
 pub fn library_closed() {
@@ -118,7 +151,7 @@ pub fn game_window_closed(id: &str) {
     let library = SHELL.with(|shell| {
         let mut shell = shell.borrow_mut();
         shell.games.remove(id);
-        shell.library.clone()
+        shell.library.as_ref().map(|(_, view)| view.clone())
     });
     release_profiles_if_last();
     if let Some(frame) = library.and_then(|view| view.browser()).and_then(|browser| browser.main_frame()) {
@@ -128,7 +161,7 @@ pub fn game_window_closed(id: &str) {
 
 /// Se o browser é o da Biblioteca.
 pub fn is_library_browser(browser: &Browser) -> bool {
-    SHELL.with(|shell| shell.borrow().library.clone()).is_some_and(|view| same_browser(&view, browser))
+    SHELL.with(|shell| shell.borrow().library.as_ref().map(|(_, view)| view.clone())).is_some_and(|view| same_browser(&view, browser))
 }
 
 /// Id do jogo cuja janela tem o browser. Os views são copiados antes da comparação

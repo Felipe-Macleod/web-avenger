@@ -1,4 +1,4 @@
-use crate::client::{AvengerClient, is_window_fullscreen};
+use crate::client::is_window_fullscreen;
 use crate::renderer::AvengerRenderProcessHandler;
 use cef::*;
 use std::cell::RefCell;
@@ -66,21 +66,23 @@ wrap_browser_process_handler! {
 
     impl BrowserProcessHandler {
         fn on_context_initialized(&self) {
-            let mut client = AvengerClient::new();
-            let url = CefString::from(crate::library_url());
-            let settings = BrowserSettings::default();
-            let mut delegate = AvengerBrowserViewDelegate::new();
-            let browser_view = browser_view_create(
-                Some(&mut client),
-                Some(&url),
-                Some(&settings),
-                None,
-                None,
-                Some(&mut delegate),
-            );
+            match command_line_get_global() {
+                Some(command_line) => crate::shell::open_from_command_line(&command_line),
+                None => crate::shell::open_library(),
+            }
+        }
 
-            let mut delegate = AvengerWindowDelegate::new(RefCell::new(browser_view), None, "Web Avenger".into());
-            window_create_top_level(Some(&mut delegate));
+        fn on_already_running_app_relaunch(
+            &self,
+            command_line: Option<&mut CommandLine>,
+            _current_directory: Option<&CefString>,
+        ) -> i32 {
+            // O executável rodou de novo (ex.: atalho de um jogo) com o app já aberto.
+            match command_line {
+                Some(command_line) => crate::shell::open_from_command_line(command_line),
+                None => crate::shell::open_library(),
+            }
+            1
         }
     }
 }
@@ -118,7 +120,7 @@ wrap_window_delegate! {
             browser_view.request_focus();
             match &self.game {
                 Some(id) => crate::shell::game_window_created(id, window),
-                None => crate::shell::library_created(browser_view.clone()),
+                None => crate::shell::library_created(window.clone(), browser_view.clone()),
             }
         }
 

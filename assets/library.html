@@ -478,6 +478,7 @@
 <div class="context-menu" id="card-menu" role="menu" hidden>
   <button role="menuitem" data-action="edit">Editar jogo</button>
   <button role="menuitem" data-action="share">Compartilhar (copiar link)</button>
+  <button role="menuitem" data-action="shortcut">Criar atalho na área de trabalho</button>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
@@ -815,6 +816,16 @@
     }
   }
 
+  // `avengerCreateShortcut` é injetado pelo launcher.
+  function createShortcut(game) {
+    try {
+      window.avengerCreateShortcut(game.id);
+      showToast(`Atalho de ${game.name} criado na área de trabalho`);
+    } catch (err) {
+      showToast(`Não foi possível criar o atalho: ${err.message ?? err}`);
+    }
+  }
+
   // ---- Cadastro de jogo ----
   // `avengerAddGame` é injetado pelo launcher e grava em ~/.config/web-avenger/games.json.
   const gameDialog = document.getElementById("game-dialog");
@@ -1099,6 +1110,7 @@
     closeMenu();
     if (action === "edit" && game) openEditor(game);
     else if (action === "share" && game) shareGame(game);
+    else if (action === "shortcut" && game) createShortcut(game);
   });
   cardMenu.addEventListener("keydown", (event) => {
     const i = menuItems.indexOf(document.activeElement);

@@ -22,6 +22,7 @@ mod page_info;
 mod playtime;
 mod profiles;
 mod shell;
+mod shortcut;
 mod renderer;
 mod settings;
 
@@ -92,6 +93,11 @@ fn main() {
         std::ptr::null_mut(),
     ) != 1
     {
+        // O app já estava aberto: a instância aberta recebeu esta linha de comando (ver
+        // `on_already_running_app_relaunch`) e este processo só sai.
+        if get_exit_code() == Resultcode::NORMAL_EXIT_PROCESS_NOTIFIED.get_raw() as i32 {
+            std::process::exit(0);
+        }
         eprintln!("[web-avenger] falha ao inicializar o CEF");
         std::process::exit(1);
     }

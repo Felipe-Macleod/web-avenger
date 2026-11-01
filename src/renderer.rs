@@ -1,6 +1,6 @@
 //! Código que roda no processo de renderização (um por página).
 
-use crate::{audio, catalog, dmm, itch, library, native_pads, page_info, playtime, settings};
+use crate::{audio, catalog, dmm, itch, library, native_pads, page_info, playtime, settings, shortcut};
 use cef::*;
 use std::{cell::RefCell, collections::HashMap};
 
@@ -85,6 +85,7 @@ wrap_render_process_handler! {
                 install_function(context, "avengerUpdateGame", &mut SaveGameHandler::new(true));
                 install_function(context, "avengerRemoveGame", &mut RemoveGameHandler::new());
                 install_function(context, "avengerStats", &mut StatsHandler::new());
+                install_function(context, "avengerCreateShortcut", &mut CreateShortcutHandler::new());
                 install_function(
                     context,
                     "avengerFetchPageInfo",
@@ -310,6 +311,44 @@ wrap_v8_handler! {
 
             match result {
                 Ok(()) => {
+                    if let Some(retval) = retval {
+                        *retval = v8_value_create_bool(1);
+                    }
+                }
+                Err(err) => {
+                    if let Some(exception) = exception {
+                        *exception = CefString::from(err.as_str());
+                    }
+                }
+            }
+            1
+        }
+    }
+}
+
+wrap_v8_handler! {
+    struct CreateShortcutHandler;
+
+    impl V8Handler {
+        /// `avengerCreateShortcut(id: string) -> boolean`
+        fn execute(
+            &self,
+            _name: Option<&CefString>,
+            _object: Option<&mut V8Value>,
+            arguments: Option<&[Option<V8Value>]>,
+            retval: Option<&mut Option<V8Value>>,
+            exception: Option<&mut CefString>,
+        ) -> i32 {
+            let result = string_argument(arguments).and_then(|id| {
+                let game = catalog::load()
+                    .into_iter()
+                    .find(|game| game.id == id)
+                    .ok_or_else(|| format!("jogo `{id}` não encontrado"))?;
+                shortcut::create(&game).map_err(|e| e.to_string())
+            });
+
+            match result {
+                Ok(_) => {
                     if let Some(retval) = retval {
                         *retval = v8_value_create_bool(1);
                     }

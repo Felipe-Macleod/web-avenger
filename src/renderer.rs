@@ -1,11 +1,11 @@
 //! Código que roda no processo de renderização (um por página).
 
-use crate::{audio, catalog, itch, library, native_pads, page_info, playtime, settings};
+use crate::{audio, catalog, dmm, itch, library, native_pads, page_info, playtime, settings};
 use cef::*;
 use std::{cell::RefCell, collections::HashMap};
 
 thread_local! {
-    /// Pedidos ao processo principal (`avengerFetchPageInfo`, `avengerItch`) aguardando resposta.
+    /// Pedidos ao processo principal (`avengerFetchPageInfo`, `avengerItch`, `avengerDmm`) aguardando resposta.
     static PENDING_CALLBACKS: RefCell<(i32, HashMap<i32, (V8Context, V8Value)>)> =
         RefCell::new((0, HashMap::new()));
 }
@@ -95,6 +95,11 @@ wrap_render_process_handler! {
                     "avengerItch",
                     &mut MainProcessCallHandler::new(itch::REQUEST_MESSAGE, "avengerItch(ação, callback)"),
                 );
+                install_function(
+                    context,
+                    "avengerDmm",
+                    &mut MainProcessCallHandler::new(dmm::REQUEST_MESSAGE, "avengerDmm(ação, callback)"),
+                );
                 let json = serde_json::to_string(&settings).unwrap_or_default();
                 eval(context, &format!("window.avengerSettings = {json};"));
             }
@@ -112,7 +117,7 @@ wrap_render_process_handler! {
                 return 0;
             };
             let name = CefStringUtf16::from(&message.name()).to_string();
-            if name != page_info::RESPONSE_MESSAGE && name != itch::RESPONSE_MESSAGE {
+            if ![page_info::RESPONSE_MESSAGE, itch::RESPONSE_MESSAGE, dmm::RESPONSE_MESSAGE].contains(&name.as_str()) {
                 return 0;
             }
             let Some(args) = message.argument_list() else {

@@ -117,6 +117,14 @@ Em **Configurações → Apps conectados**, o botão **Conectar** liga sua conta
 - Os jogos comprados vêm da API (`/profile/owned-keys`). Os jogos de cada coleção são lidos da página da coleção (`itch.io/c/<id>`) com a sessão do app, porque o endpoint da API para isso exige o escopo `collection:view`, que o OAuth do itch.io não concede. Os jogos de navegador são reconhecidos pelo tipo do projeto (`html`) ou pelo selo "Play in browser".
 - **Desconectar** revoga o token no itch.io e apaga o arquivo e a chave do chaveiro. Os jogos importados continuam na Biblioteca.
 
+## DMM GAMES / FANZA GAMES (Apps conectados)
+
+O DMM não tem API pública nem OAuth. Em **Configurações → Apps conectados → DMM GAMES / FANZA GAMES**, **Conectar** abre o login do próprio site dentro do app: primeiro o do DMM, depois o do FANZA, que tem sessão separada. Com a sessão ativa, os dois passam direto. A sessão fica nos cookies do perfil principal; nenhuma senha passa pelo launcher.
+
+**Sincronizar** lê **マイゲーム** (Meus jogos, `library.games.dmm.com`) e importa os jogos de navegador para PC, com a URL de jogar (`play.games.dmm.com/game/<jogo>` ou `play.games.dmm.co.jp/game/<jogo>`), a página da loja, a capa, a descrição e o gênero. Jogos do DMM GAMES PLAYER, de celular ou de sites parceiros ficam de fora. Os do FANZA recebem a tag `18+` e seguem a opção **Mostrar jogos +18**. Os jogos ficam em `~/.config/web-avenger/dmm-games.json`, com as mesmas regras do itch.io: editados e removidos ficam no próprio arquivo, e removidos não voltam.
+
+Os jogos do DMM são bloqueados fora do Japão: use uma VPN no sistema. Na primeira vez que abrir um jogo do FANZA, o site pede a verificação de idade. **Desconectar** apaga os cookies do DMM e do FANZA.
+
 ## Áudio AAC
 
 As builds do CEF não trazem codecs proprietários, então o Chromium embutido não decodifica AAC — o formato que o Unity WebGL usa para áudio comprimido (jogos ficariam mudos). O launcher intercepta `decodeAudioData` para buffers MP4/M4A (`assets/audio-fallback.js`) e decodifica em Rust com o [Symphonia](https://github.com/pdeljanov/Symphonia) (`src/audio.rs`). MP3, Ogg/Vorbis e Opus continuam com o decodificador do Chromium.

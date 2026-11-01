@@ -76,7 +76,8 @@ wrap_client! {
             match (frame, message) {
                 (Some(frame), Some(message)) => {
                     (crate::page_info::handle_request(frame, message)
-                        || crate::itch::handle_request(frame, message)) as i32
+                        || crate::itch::handle_request(frame, message)
+                        || crate::dmm::handle_request(frame, message)) as i32
                 }
                 _ => 0,
             }
@@ -264,8 +265,9 @@ wrap_request_handler! {
                 return 0;
             };
             let url = CefStringUtf16::from(&request.url()).to_string();
-            // Retorno do login OAuth do itch.io: concluído aqui, a navegação é cancelada.
-            if crate::itch::handle_navigation(frame, &url) {
+            // Retorno do login OAuth do itch.io / dos logins do DMM: concluídos aqui, a
+            // navegação é cancelada.
+            if crate::itch::handle_navigation(frame, &url) || crate::dmm::handle_navigation(frame, &url) {
                 return 1;
             }
             if frame.is_main() == 0 {

@@ -234,7 +234,7 @@ fn parse_collection_page(html: &str) -> Vec<Value> {
 }
 
 /// Página de jogo comparável: sem esquema, `www.`, query e barra final, em minúsculas.
-fn normalize_page(url: &str) -> String {
+pub(crate) fn normalize_page(url: &str) -> String {
     let url = url.split(['?', '#']).next().unwrap_or(url);
     let url = url.split_once("://").map_or(url, |(_, rest)| rest);
     url.trim_start_matches("www.").trim_end_matches('/').to_lowercase()
@@ -321,7 +321,8 @@ fn import(job: Shared, candidate: Candidate) {
                         removed: false,
                         source: Some(catalog::ITCH_SOURCE.into()),
                         itch_id,
-                        added_at: None, // preenchido em `catalog::add_itch_games`
+                        dmm_id: None,
+                        added_at: None, // preenchido em `catalog::add_imported_games`
                     };
                     let mut job = job.borrow_mut();
                     job.report.imported += 1;
@@ -339,7 +340,7 @@ fn finish(job: Shared) {
     let saved = if new_games.is_empty() {
         Ok(())
     } else {
-        catalog::add_itch_games(new_games)
+        catalog::add_imported_games(catalog::itch_catalog_path(), new_games)
             .and_then(|_| library::write(&catalog::load()).map(|_| ()))
             .map_err(|e| e.to_string())
     };

@@ -31,6 +31,9 @@ pub struct Game {
     /// Id do jogo no itch.io, para a sincronização não importar o mesmo jogo duas vezes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub itch_id: Option<u64>,
+    /// Id do jogo no DMM GAMES (ex.: `"710892-social-pc"`), com a mesma função do `itch_id`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dmm_id: Option<String>,
     /// Quando o jogo foi adicionado (segundos Unix), para ordenar por "recém adicionado".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub added_at: Option<u64>,
@@ -38,6 +41,8 @@ pub struct Game {
 
 /// Origem dos jogos importados do itch.io (ver `src/itch/sync.rs`).
 pub const ITCH_SOURCE: &str = "itch.io";
+/// Origem dos jogos importados do DMM GAMES / FANZA GAMES (ver `src/dmm/sync.rs`).
+pub const DMM_SOURCE: &str = "DMM GAMES";
 
 /// Caminho do catálogo do usuário: `~/.config/web-avenger/games.json` (jogos manuais
 /// e edições/remoções de jogos do catálogo embutido).
@@ -52,6 +57,17 @@ pub fn itch_catalog_path() -> Option<PathBuf> {
     dirs::config_dir().map(|dir| dir.join("web-avenger").join("itch-games.json"))
 }
 
+/// Jogos importados do DMM GAMES: `~/.config/web-avenger/dmm-games.json` (mesmas regras
+/// do arquivo do itch.io).
+pub fn dmm_catalog_path() -> Option<PathBuf> {
+    dirs::config_dir().map(|dir| dir.join("web-avenger").join("dmm-games.json"))
+}
+
+/// Arquivos dos jogos importados (um por origem).
+fn imported_catalog_paths() -> [Option<PathBuf>; 2] {
+    [itch_catalog_path(), dmm_catalog_path()]
+}
+
 fn builtin_games() -> Vec<Game> {
     serde_json::from_str(DEFAULT_CATALOG).expect("games.json embutido é inválido")
 }
@@ -61,11 +77,12 @@ pub fn load() -> Vec<Game> {
     load_all().into_iter().filter(|game| !game.removed).collect()
 }
 
-/// Mescla, nesta ordem, o catálogo embutido, os jogos do itch.io e o catálogo do
-/// usuário (entradas com o mesmo `id` são substituídas, as novas são adicionadas).
+/// Mescla, nesta ordem, o catálogo embutido, os jogos importados (itch.io, DMM) e o
+/// catálogo do usuário (entradas com o mesmo `id` são substituídas, as novas são adicionadas).
 fn load_all() -> Vec<Game> {
     let mut games = builtin_games();
-    for path in [itch_catalog_path(), user_catalog_path()].into_iter().flatten() {
+    let [itch, dmm] = imported_catalog_paths();
+    for path in [itch, dmm, user_catalog_path()].into_iter().flatten() {
         let layer = match read_games(&path) {
             Ok(layer) => layer,
             Err(err) => {
@@ -129,7 +146,8 @@ fn config_path(path: Option<PathBuf>) -> io::Result<PathBuf> {
     path.ok_or_else(|| io::Error::other("diretório de configuração não encontrado"))
 }
 
-/// Gera `id`s únicos (pelo nome) para jogos novos e marca quando foram adicionados;
+/// Gera `id`s únicos para jogos novos e marca quando foram adicionados. A base é o `id`
+/// sugerido (ex.: o slug do DMM, já que nomes em japonês não viram ASCII) ou o nome;
 /// `taken` inclui os removidos, cujos ids não são reaproveitados.
 fn assign_ids(games: Vec<Game>) -> Vec<Game> {
     let mut taken: Vec<String> = load_all().into_iter().map(|game| game.id).collect();
@@ -140,7 +158,7 @@ fn assign_ids(games: Vec<Game>) -> Vec<Game> {
         .into_iter()
         .map(|mut game| {
             game.added_at.get_or_insert(added_at);
-            let base = slugify(&game.name);
+            let base = slugify(if game.id.is_empty() { &game.name } else { &game.id });
             game.id = base.clone();
             let mut suffix = 2;
             while taken.contains(&game.id) {
@@ -163,13 +181,14 @@ pub fn add_user_game(game: Game) -> io::Result<Game> {
     Ok(game)
 }
 
-/// Adiciona jogos importados do itch.io ao arquivo deles (uma única gravação).
-pub fn add_itch_games(games: Vec<Game>) -> io::Result<Vec<Game>> {
-    let path = config_path(itch_catalog_path())?;
-    let mut itch_games = read_games(&path)?;
+/// Adiciona jogos importados ao arquivo da origem deles (`itch_catalog_path()`,
+/// `dmm_catalog_path()`), numa única gravação.
+pub fn add_imported_games(path: Option<PathBuf>, games: Vec<Game>) -> io::Result<Vec<Game>> {
+    let path = config_path(path)?;
+    let mut imported = read_games(&path)?;
     let added = assign_ids(games);
-    itch_games.extend(added.iter().cloned());
-    write_games(&path, &itch_games)?;
+    imported.extend(added.iter().cloned());
+    write_games(&path, &imported)?;
     Ok(added)
 }
 
@@ -209,10 +228,19 @@ pub fn known_itch_ids() -> std::collections::HashSet<u64> {
     load_all().into_iter().filter_map(|game| game.itch_id).collect()
 }
 
-/// Se o jogo vive no arquivo do itch.io.
-fn in_itch_catalog(id: &str) -> io::Result<bool> {
-    let path = config_path(itch_catalog_path())?;
-    Ok(read_games(&path)?.iter().any(|game| game.id == id))
+/// Ids do DMM GAMES já no catálogo, inclusive de jogos removidos (que não voltam).
+pub fn known_dmm_ids() -> std::collections::HashSet<String> {
+    load_all().into_iter().filter_map(|game| game.dmm_id).collect()
+}
+
+/// O arquivo de jogos importados onde o jogo vive, se for um deles.
+fn imported_catalog_of(id: &str) -> io::Result<Option<PathBuf>> {
+    for path in imported_catalog_paths().into_iter().flatten() {
+        if read_games(&path)?.iter().any(|game| game.id == id) {
+            return Ok(Some(path));
+        }
+    }
+    Ok(None)
 }
 
 /// Grava `game` no arquivo indicado, substituindo a entrada com o mesmo `id`.
@@ -225,7 +253,7 @@ fn upsert(path: &Path, game: Game) -> io::Result<()> {
     write_games(path, &games)
 }
 
-/// Salva a edição de um jogo. Jogos do itch.io são editados no arquivo deles; um jogo
+/// Salva a edição de um jogo. Jogos importados são editados no arquivo deles; um jogo
 /// do catálogo embutido ganha uma cópia no catálogo do usuário, que prevalece sobre a
 /// original (mesmo `id`).
 pub fn update_user_game(mut game: Game) -> io::Result<Game> {
@@ -236,10 +264,14 @@ pub fn update_user_game(mut game: Game) -> io::Result<Game> {
     if let Some(current) = load_all().into_iter().find(|existing| existing.id == game.id) {
         game.source = current.source;
         game.itch_id = current.itch_id;
+        game.dmm_id = current.dmm_id;
     }
     game.removed = false;
-    let path = if in_itch_catalog(&game.id)? { itch_catalog_path() } else { user_catalog_path() };
-    upsert(&config_path(path)?, game.clone())?;
+    let path = match imported_catalog_of(&game.id)? {
+        Some(path) => path,
+        None => config_path(user_catalog_path())?,
+    };
+    upsert(&path, game.clone())?;
     Ok(game)
 }
 
@@ -249,10 +281,10 @@ pub fn remove_user_game(id: &str) -> io::Result<()> {
         return Err(io::Error::other(format!("jogo `{id}` não encontrado")));
     };
 
-    if in_itch_catalog(id)? {
-        // Fica marcado no arquivo do itch.io para a sincronização não trazê-lo de volta.
+    if let Some(path) = imported_catalog_of(id)? {
+        // Fica marcado no arquivo da origem para a sincronização não trazê-lo de volta.
         game.removed = true;
-        upsert(&config_path(itch_catalog_path())?, game)
+        upsert(&path, game)
     } else if builtin_games().iter().any(|builtin| builtin.id == id) {
         // O catálogo embutido não muda: fica uma marca de removido no do usuário.
         game.removed = true;

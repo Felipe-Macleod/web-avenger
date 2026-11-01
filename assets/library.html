@@ -348,6 +348,19 @@
           <button class="action primary" id="itch-connect" hidden>Conectar</button>
         </div>
       </div>
+      <div class="row app-row">
+        <div class="app-logo" aria-hidden="true">DMM</div>
+        <div class="text">
+          <strong>DMM GAMES / FANZA GAMES</strong>
+          <span id="dmm-status">Verificando…</span>
+          <span class="app-message" id="dmm-message" hidden></span>
+        </div>
+        <div class="actions">
+          <button class="action danger" id="dmm-disconnect" hidden>Desconectar</button>
+          <button class="action" id="dmm-sync" hidden>Sincronizar</button>
+          <button class="action primary" id="dmm-connect" hidden>Conectar</button>
+        </div>
+      </div>
     </section>
 
     <section class="panel">
@@ -616,6 +629,9 @@
         navItem("source:manual", "source", "Manual", gamesForView("source:manual").length),
         ...(gamesForView("source:itch.io").length
           ? [navItem("source:itch.io", "itch", "itch.io", gamesForView("source:itch.io").length)]
+          : []),
+        ...(gamesForView("source:DMM GAMES").length
+          ? [navItem("source:DMM GAMES", "source", "DMM GAMES", gamesForView("source:DMM GAMES").length)]
           : []),
       ]),
       ...(tags.length ? [section("Categorias", tags.map(([tag, n]) => navItem(`tag:${tag}`, "tag", tag, n)))] : []),
@@ -1451,8 +1467,120 @@
   try { sessionStorage.removeItem("itchMessage"); } catch {}
   refreshItch();
 
+  // ---- Apps conectados: DMM GAMES / FANZA GAMES ----
+  // `avengerDmm(ação, callback)` é injetado pelo launcher. Sem OAuth: a sessão são os
+  // cookies dos logins feitos no próprio site (DMM e FANZA), no perfil principal.
+  const dmmStatus = document.getElementById("dmm-status");
+  const dmmMessage = document.getElementById("dmm-message");
+  const dmmConnect = document.getElementById("dmm-connect");
+  const dmmSync = document.getElementById("dmm-sync");
+  const dmmDisconnect = document.getElementById("dmm-disconnect");
+
+  function dmmCall(action) {
+    return new Promise((resolve) => {
+      try {
+        window.avengerDmm(action, (json) => {
+          try { resolve(JSON.parse(json)); } catch { resolve({ ok: false, error: "resposta inválida" }); }
+        });
+      } catch (err) {
+        resolve({ ok: false, error: String(err.message ?? err) });
+      }
+    });
+  }
+
+  function showDmmMessage(text, kind) {
+    dmmMessage.textContent = text;
+    dmmMessage.className = `app-message ${kind}`;
+    dmmMessage.hidden = !text;
+  }
+
+  async function refreshDmm() {
+    const status = await dmmCall("status");
+    // O FANZA tem login próprio: sem ele, os jogos +18 não abrem logados.
+    const needsAdult = status.connected && !status.adult;
+    dmmStatus.textContent = needsAdult
+      ? "Conectado ao DMM, mas falta o login no FANZA. Clique em Reconectar."
+      : status.connected ? "Conectado ao DMM e ao FANZA."
+      : "Não conectado. Importa os jogos de navegador de Meus jogos (マイゲーム). Fora do Japão, use uma VPN.";
+    dmmConnect.hidden = status.connected && !needsAdult;
+    dmmConnect.textContent = needsAdult ? "Reconectar" : "Conectar";
+    dmmSync.hidden = !status.connected;
+    dmmDisconnect.hidden = !status.connected && !status.adult;
+    resetDmmDisconnect();
+  }
+
+  function resetDmmDisconnect() {
+    dmmDisconnect.classList.remove("confirm");
+    dmmDisconnect.textContent = "Desconectar";
+  }
+
+  dmmConnect.addEventListener("click", async () => {
+    dmmConnect.disabled = true;
+    const result = await dmmCall("connect");
+    if (result.ok) {
+      location.href = result.url; // logins do DMM e do FANZA no próprio app
+    } else {
+      showDmmMessage(result.error, "error");
+      dmmConnect.disabled = false;
+    }
+  });
+
+  dmmSync.addEventListener("click", async () => {
+    dmmSync.disabled = true;
+    dmmSync.textContent = "Sincronizando…";
+    showDmmMessage("Lendo Meus jogos no DMM…", "");
+    const result = await dmmCall("sync");
+    dmmSync.disabled = false;
+    dmmSync.textContent = "Sincronizar";
+    if (!result.ok) return showDmmMessage(result.error, "error");
+
+    const r = result.report;
+    const parts = [
+      `${r.imported} jogo${r.imported === 1 ? "" : "s"} importado${r.imported === 1 ? "" : "s"}`,
+      `${r.existing} já na Biblioteca`,
+      `${r.not_web} fora do navegador`,
+    ];
+    if (r.failed.length) parts.push(`sem endereço de jogo: ${r.failed.join(", ")}`);
+    const text = `${parts.join(" · ")}.`;
+    if (r.imported) {
+      store(sessionStorage, "dmmMessage", text);
+      location.reload();
+    } else {
+      showDmmMessage(text, "ok");
+    }
+  });
+
+  dmmDisconnect.addEventListener("click", async () => {
+    if (!dmmDisconnect.classList.contains("confirm")) {
+      dmmDisconnect.classList.add("confirm");
+      dmmDisconnect.textContent = "Confirmar";
+      return;
+    }
+    const result = await dmmCall("disconnect");
+    showDmmMessage(result.ok ? "Desconectado. Os jogos importados continuam na Biblioteca." : result.error,
+      result.ok ? "ok" : "error");
+    refreshDmm();
+  });
+  dmmDisconnect.addEventListener("blur", resetDmmDisconnect);
+
+  // Retorno dos logins (`#dmm=ok&user=…` ou `#dmm=erro&msg=…`) e mensagem pós-sincronização.
+  const dmmReturn = new URLSearchParams(location.hash.slice(1));
+  const pendingDmmMessage = load(sessionStorage, "dmmMessage");
+  if (dmmReturn.has("dmm")) {
+    history.replaceState(null, "", location.pathname);
+    showDmmMessage(
+      dmmReturn.get("dmm") === "ok"
+        ? `Conectado${dmmReturn.get("user") ? ` como ${dmmReturn.get("user")}` : ""}. Clique em Sincronizar para importar seus jogos.`
+        : dmmReturn.get("msg") ?? "Não foi possível conectar.",
+      dmmReturn.get("dmm") === "ok" ? "ok" : "error");
+  } else if (pendingDmmMessage) {
+    showDmmMessage(pendingDmmMessage, "ok");
+  }
+  try { sessionStorage.removeItem("dmmMessage"); } catch {}
+  refreshDmm();
+
   // Restaura a view aberta antes de ir para um jogo e voltar com F1.
-  const showApps = itchReturn.has("itch") || pendingItchMessage;
+  const showApps = itchReturn.has("itch") || pendingItchMessage || dmmReturn.has("dmm") || pendingDmmMessage;
   selectView(showApps ? "settings" : load(sessionStorage, "view") ?? "all");
   if (showApps) document.getElementById("connected-apps").scrollIntoView({ block: "center" });
 </script>

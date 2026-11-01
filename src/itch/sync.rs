@@ -25,6 +25,8 @@ pub struct SyncReport {
     pub imported: usize,
     /// Já estavam na Biblioteca (inclusive os que você removeu).
     pub existing: usize,
+    /// Apagados da Biblioteca por terem saído da sua biblioteca e coleções no itch.io.
+    pub removed: usize,
     /// Só para download (sem versão de navegador).
     pub not_web: usize,
     /// De navegador, mas a URL do jogo não foi encontrada (ex.: exige login no site).
@@ -337,13 +339,27 @@ fn import(job: Shared, candidate: Candidate) {
 
 fn finish(job: Shared) {
     let new_games = std::mem::take(&mut job.borrow_mut().new_games);
-    let saved = if new_games.is_empty() {
-        Ok(())
-    } else {
-        catalog::add_imported_games(catalog::itch_catalog_path(), new_games)
-            .and_then(|_| library::write(&catalog::load()).map(|_| ()))
-            .map_err(|e| e.to_string())
-    };
+    let saved = (|| {
+        let imported = !new_games.is_empty();
+        if imported {
+            catalog::add_imported_games(catalog::itch_catalog_path(), new_games)?;
+        }
+        // Uma coleção que não carregou faria os jogos dela parecerem removidos.
+        let removed = if job.borrow().report.skipped_collections.is_empty() {
+            let job = job.borrow();
+            catalog::prune_imported_games(catalog::itch_catalog_path(), |game| {
+                game.itch_id.is_none_or(|id| job.seen.contains(&id))
+            })?
+        } else {
+            0
+        };
+        job.borrow_mut().report.removed = removed;
+        if imported || removed > 0 {
+            library::write(&catalog::load())?;
+        }
+        Ok::<(), std::io::Error>(())
+    })()
+    .map_err(|e| e.to_string());
     let (done, report) = {
         let mut job = job.borrow_mut();
         (job.done.take(), std::mem::take(&mut job.report))

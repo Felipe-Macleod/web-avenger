@@ -1447,11 +1447,12 @@
       `${r.existing} já na Biblioteca`,
       `${r.not_web} só para download`,
     ];
+    if (r.removed) parts.push(`${r.removed} removido${r.removed === 1 ? "" : "s"} (saíram do itch.io)`);
     if (r.failed.length) parts.push(`sem versão de navegador encontrada: ${r.failed.join(", ")}`);
     if (r.skipped_collections?.length) parts.push(`coleções não lidas: ${r.skipped_collections.join(", ")}`);
     const text = `${parts.join(" · ")}.`;
-    if (r.imported) {
-      // A Biblioteca foi regerada com os jogos novos: recarrega e mantém a mensagem.
+    if (r.imported || r.removed) {
+      // A Biblioteca foi regerada com os jogos novos/removidos: recarrega e mantém a mensagem.
       store(sessionStorage, "itchMessage", text);
       location.reload();
     } else {
@@ -1561,9 +1562,10 @@
       `${r.existing} já na Biblioteca`,
       `${r.not_web} fora do navegador`,
     ];
+    if (r.removed) parts.push(`${r.removed} removido${r.removed === 1 ? "" : "s"} (saíram do DMM)`);
     if (r.failed.length) parts.push(`sem endereço de jogo: ${r.failed.join(", ")}`);
     const text = `${parts.join(" · ")}.`;
-    if (r.imported) {
+    if (r.imported || r.removed) {
       store(sessionStorage, "dmmMessage", text);
       location.reload();
     } else {

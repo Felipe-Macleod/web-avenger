@@ -17,6 +17,8 @@ pub struct SyncReport {
     pub imported: usize,
     /// Já estavam na Biblioteca (inclusive os que você removeu).
     pub existing: usize,
+    /// Apagados da Biblioteca por terem saído de "Meus jogos" no DMM.
+    pub removed: usize,
     /// Exigem o DMM GAMES PLAYER, são de celular ou de sites parceiros.
     pub not_web: usize,
     /// De navegador, mas sem endereço de jogo reconhecido.
@@ -86,6 +88,9 @@ fn import(games: Vec<MyGame>) -> Result<SyncReport, String> {
     let known_ids = catalog::known_dmm_ids();
     let known_pages: HashSet<String> = catalog::load_all_pages().iter().map(|page| normalize_page(page)).collect();
     let mut new_games = Vec::new();
+    // Lista vazia com login feito é mais provável ser a página que mudou do que a
+    // biblioteca vazia: não apaga nada nesse caso.
+    let seen: Option<HashSet<String>> = (!games.is_empty()).then(|| games.iter().map(|game| game.id.clone()).collect());
     for game in games {
         if known_ids.contains(&game.id) || known_pages.contains(&normalize_page(&game.link)) {
             report.existing += 1;
@@ -103,11 +108,22 @@ fn import(games: Vec<MyGame>) -> Result<SyncReport, String> {
             None => report.failed.push(game.name),
         }
     }
-    if !new_games.is_empty() {
-        catalog::add_imported_games(catalog::dmm_catalog_path(), new_games)
-            .and_then(|_| library::write(&catalog::load()).map(|_| ()))
-            .map_err(|e| e.to_string())?;
-    }
+    let imported = !new_games.is_empty();
+    (|| {
+        if imported {
+            catalog::add_imported_games(catalog::dmm_catalog_path(), new_games)?;
+        }
+        if let Some(seen) = &seen {
+            report.removed = catalog::prune_imported_games(catalog::dmm_catalog_path(), |game| {
+                game.dmm_id.as_ref().is_none_or(|id| seen.contains(id))
+            })?;
+        }
+        if imported || report.removed > 0 {
+            library::write(&catalog::load())?;
+        }
+        Ok::<(), std::io::Error>(())
+    })()
+    .map_err(|e| e.to_string())?;
     Ok(report)
 }
 

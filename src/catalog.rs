@@ -192,6 +192,21 @@ pub fn add_imported_games(path: Option<PathBuf>, games: Vec<Game>) -> io::Result
     Ok(added)
 }
 
+/// Apaga do arquivo de jogos importados (`itch_catalog_path()`, `dmm_catalog_path()`) os
+/// que não passam em `keep` (saíram da biblioteca na origem), inclusive os removidos: se
+/// voltarem para lá, são importados de novo. Devolve quantos saíram.
+pub fn prune_imported_games(path: Option<PathBuf>, keep: impl Fn(&Game) -> bool) -> io::Result<usize> {
+    let path = config_path(path)?;
+    let mut games = read_games(&path)?;
+    let before = games.len();
+    games.retain(keep);
+    let pruned = before - games.len();
+    if pruned > 0 {
+        write_games(&path, &games)?;
+    }
+    Ok(pruned)
+}
+
 /// Move para `itch-games.json` os jogos do itch.io que versões anteriores gravavam no
 /// `games.json`. Grava primeiro o arquivo do itch.io: se algo falhar no meio, o jogo
 /// fica duplicado (o do usuário prevalece), nunca perdido.

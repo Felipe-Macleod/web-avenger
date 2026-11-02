@@ -52,7 +52,8 @@ jobs:
 
       - name: Ferramentas (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build
+        # libdbus-1-dev: o `keyring` usa o Secret Service pelo D-Bus (crate libdbus-sys).
+        run: sudo apt-get update && sudo apt-get install -y ninja-build pkg-config libdbus-1-dev
       - name: Ferramentas (Windows)
         if: runner.os == 'Windows'
         run: choco install ninja -y --no-progress

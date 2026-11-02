@@ -4,7 +4,7 @@ Agregador standalone de jogos WebAssembly, escrito em Rust. Os jogos rodam **den
 
 ## Build
 
-Requisitos: Rust 1.85+, `cmake`, `ninja` e o `cargo-about` (`cargo install --locked cargo-about --features cli`, usado pelos scripts de bundle). O primeiro build baixa o CEF (~1 GB descompactado).
+Requisitos: Rust 1.85+, `cmake`, `ninja`, os headers do D-Bus (Debian/Ubuntu: `libdbus-1-dev` e `pkg-config`; Fedora: `dbus-devel`) e o `cargo-about` (`cargo install --locked cargo-about --features cli`, usado pelos scripts de bundle). O primeiro build baixa o CEF (~1 GB descompactado).
 
 ```sh
 ./scripts/bundle.sh          # cargo build --release + monta dist/web-avenger/

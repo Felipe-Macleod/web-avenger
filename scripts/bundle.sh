@@ -15,12 +15,16 @@ cargo build --profile "$PROFILE"
 TARGET_DIR="target/$PROFILE"
 DIST="dist/web-avenger"
 
-# Diretório do CEF: $CEF_PATH (exportado) ou o baixado pelo build do cef-dll-sys.
-if [[ -n "${CEF_PATH:-}" && -f "$CEF_PATH/libcef.so" ]]; then
-  CEF_DIR="$CEF_PATH"
-else
-  CEF_DIR="$(dirname "$(ls -t "$TARGET_DIR"/build/cef-dll-sys-*/out/*/libcef.so | head -n1)")"
+# Diretório do CEF: dentro de $CEF_PATH (o cef-dll-sys baixa para $CEF_PATH/<versão>/<pasta>)
+# ou o baixado pelo build do cef-dll-sys em target/. Em ambos, o libcef.so mais recente.
+LIB=""
+if [[ -n "${CEF_PATH:-}" ]]; then
+  LIB="$(find "$CEF_PATH" -name libcef.so -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -n1 | cut -d' ' -f2-)"
 fi
+if [[ -z "$LIB" ]]; then
+  LIB="$(ls -t "$TARGET_DIR"/build/cef-dll-sys-*/out/*/libcef.so | head -n1)"
+fi
+CEF_DIR="$(dirname "$LIB")"
 echo "Usando CEF de: $CEF_DIR"
 
 rm -rf "$DIST"

@@ -1,0 +1,111 @@
+# Release: um push de tag `vX.Y.Z` compila o app no Linux e no Windows com os scripts de
+# bundle e cria um Release em rascunho com os dois pacotes. Rodado à mão (Actions → Release →
+# Run workflow), só compila e deixa os pacotes como artifacts.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 22.04: o binário roda em distribuições com glibc 2.35 ou mais nova.
+          - os: ubuntu-22.04
+            target: linux-x86_64
+          - os: windows-latest
+            target: windows-x64
+    runs-on: ${{ matrix.os }}
+    env:
+      # client_id do app OAuth do itch.io, embutido no binário (ver build.rs). Vazio: o
+      # itch.io fica desabilitado no app.
+      ITCH_CLIENT_ID: ${{ vars.ITCH_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versão
+        id: version
+        shell: bash
+        run: |
+          version="$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::A tag $GITHUB_REF_NAME não bate com a version do Cargo.toml ($version)."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # Versão do CEF (cef-dll-sys no Cargo.lock): a chave do cache do CEF.
+          echo "cef=$(grep -A1 '^name = "cef-dll-sys"' Cargo.lock | grep -m1 '^version' | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
+          # O cef-dll-sys baixa o CEF para cá (<CEF_PATH>/<versão>/…); a pasta fica em cache.
+          echo "CEF_PATH=$RUNNER_TEMP/cef" >> "$GITHUB_ENV"
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Ferramentas (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Ferramentas (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ninja -y --no-progress
+      # O CEF compila o wrapper C++ com Ninja, que precisa do ambiente do MSVC (cl.exe).
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-about
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/cef
+          key: cef-${{ matrix.target }}-${{ steps.version.outputs.cef }}
+
+      - name: Testes
+        if: runner.os == 'Linux'
+        run: cargo test --locked
+
+      - name: Bundle (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          ./scripts/bundle.sh
+          tar -C dist -czf "web-avenger-${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz" web-avenger
+      - name: Bundle (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\scripts\bundle.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Compress-Archive -Path dist\web-avenger -DestinationPath "web-avenger-${{ steps.version.outputs.version }}-${{ matrix.target }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-avenger-${{ matrix.target }}
+          path: web-avenger-${{ steps.version.outputs.version }}-${{ matrix.target }}.*
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          # Tags com hífen (ex.: v0.2.0-beta.1) são pré-releases.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: packages/*

@@ -30,6 +30,22 @@ Requisitos: Rust com o toolchain MSVC (`rustup`), Visual Studio 2022 com a carga
 
 A pasta `dist\web-avenger\` é autocontida: basta copiá-la para outra máquina Windows x64. Para compartilhar o CEF entre builds, defina `$env:CEF_PATH`. No build de release o app não abre janela de console; para ver os logs, rode o build de debug (`cargo run`).
 
+### Release
+
+O workflow `.github/workflows/release.yml` compila o app no GitHub Actions (Linux no Ubuntu 22.04, para rodar em distribuições com glibc 2.35+, e Windows) com os scripts de bundle e cria um Release **em rascunho** com `web-avenger-<versão>-linux-x86_64.tar.gz` e `web-avenger-<versão>-windows-x64.zip`. Para lançar uma versão:
+
+```sh
+# suba a `version` no Cargo.toml e faça o commit; depois:
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+A tag precisa bater com a `version` do `Cargo.toml`. Tags com hífen (ex.: `v0.2.0-beta.1`) viram pré-release. Quando os builds terminam, o rascunho aparece em **Releases**, com as notas geradas a partir dos commits, para conferir e publicar.
+
+- O `ITCH_CLIENT_ID` vem da variável do repositório em **Settings → Secrets and variables → Actions → Variables**; sem ela, o release sai com o itch.io desabilitado.
+- O CEF baixado fica em cache entre as execuções (por versão do CEF).
+- **Actions → Release → Run workflow** compila sem criar Release: os pacotes ficam nos artifacts da execução.
+
 ## Atalhos
 
 | Tecla | Ação |

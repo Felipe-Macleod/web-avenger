@@ -19,15 +19,19 @@ $ErrorActionPreference = 'Stop'
 $TargetDir = "target\$BuildProfile"
 $Dist = 'dist\web-avenger'
 
-# Diretório do CEF: $env:CEF_PATH ou o baixado pelo build do cef-dll-sys.
-if ($env:CEF_PATH -and (Get-ChildItem $env:CEF_PATH -Recurse -Filter libcef.dll -ErrorAction SilentlyContinue)) {
-    $CefRoot = $env:CEF_PATH
-} else {
+# Diretório do CEF: dentro de $env:CEF_PATH (o cef-dll-sys baixa para <CEF_PATH>\<versão>\<pasta>)
+# ou o baixado pelo build do cef-dll-sys em target\. Em ambos, o libcef.dll mais recente.
+$lib = $null
+if ($env:CEF_PATH) {
+    $lib = Get-ChildItem $env:CEF_PATH -Recurse -Filter libcef.dll -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+}
+if (-not $lib) {
     $lib = Get-ChildItem "$TargetDir\build\cef-dll-sys-*\out\*" -Recurse -Filter libcef.dll |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if (-not $lib) { throw "libcef.dll não encontrado em $TargetDir\build" }
-    $CefRoot = $lib.DirectoryName
 }
+if (-not $lib) { throw "libcef.dll não encontrado em $TargetDir\build" }
+$CefRoot = $lib.DirectoryName
 # Na distribuição oficial do CEF as DLLs ficam em Release\ e os recursos em Resources\;
 # o cef-dll-sys normalmente já entrega tudo numa pasta só.
 if (Test-Path "$CefRoot\..\Resources") { $CefRoot = (Resolve-Path "$CefRoot\..").Path }

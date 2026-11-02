@@ -131,7 +131,7 @@ Os jogos do DMM são bloqueados fora do Japão: use uma VPN no sistema. Na prime
 
 A aba **Explorar** lista jogos de navegador das lojas:
 
-- **itch.io:** ordenados por populares, mais bem avaliados, novos ou mais vendidos. **Jogar** abre o jogo numa janela sem adicioná-lo, e **Adicionar** abre o cadastro já preenchido.
+- **itch.io:** ordenados por populares, mais bem avaliados, novos ou mais vendidos. **Jogar** grava o jogo na Biblioteca, como um jogo manual, e o abre; **Adicionar** abre o cadastro já preenchido, para revisar os dados antes.
 - **DMM GAMES** e **FANZA GAMES:** ordenados por populares, novos ou mais jogados. **Jogar** grava o jogo na Biblioteca, como a sincronização faria, e o abre. O DMM o coloca em マイゲーム ao iniciar, então ele continua na Biblioteca depois de sincronizar. Fora do Japão, use VPN.
 
 **+ Feed** cadastra um feed RSS ou Atom de qualquer site. Os itens viram jogos com **Jogar** e **Adicionar**, como os do itch.io. Os feeds ficam em `settings.json`.

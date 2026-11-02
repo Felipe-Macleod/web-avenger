@@ -201,7 +201,6 @@ wrap_life_span_handler! {
             if let Some(browser) = browser
                 && let Some(id) = crate::shell::game_of(browser)
             {
-                // Jogos fora do catálogo (abertos pelo Explorar) também bloqueiam.
                 let enabled = !crate::catalog::load().iter().any(|game| game.id == id && game.no_adblock);
                 crate::adblock::set_enabled(browser.identifier(), enabled);
             }

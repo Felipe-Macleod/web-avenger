@@ -242,6 +242,15 @@ pub fn load_all_pages() -> Vec<String> {
     load_all().into_iter().map(|game| game.homepage.unwrap_or(game.url)).collect()
 }
 
+/// O jogo, inclusive removido, com esse id do itch.io ou essa página (`homepage` ou `url`).
+pub fn find_by_page(page_url: &str, itch_id: Option<u64>) -> Option<Game> {
+    load_all().into_iter().find(|game| {
+        (itch_id.is_some() && game.itch_id == itch_id)
+            || game.homepage.as_deref() == Some(page_url)
+            || game.url == page_url
+    })
+}
+
 /// Ids do itch.io já no catálogo, inclusive de jogos removidos (que não voltam).
 pub fn known_itch_ids() -> std::collections::HashSet<u64> {
     load_all().into_iter().filter_map(|game| game.itch_id).collect()

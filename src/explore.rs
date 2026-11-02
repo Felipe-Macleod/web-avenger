@@ -18,8 +18,6 @@ pub const REQUEST_MESSAGE: &str = "avenger.explore.request";
 /// Principal → renderização: `[id, json]`.
 pub const RESPONSE_MESSAGE: &str = "avenger.explore.response";
 
-/// Origem dos jogos temporários abertos pelo Explorar (rodam no perfil principal).
-const EXPLORE_SOURCE: &str = "Explorar";
 /// Tags que marcam um jogo do itch.io como +18 (as mesmas `ADULT_TAGS` da Biblioteca).
 const ADULT_TAGS: &[&str] = &["nsfw", "porn", "hentai", "adult", "erotic", "18+"];
 
@@ -434,14 +432,24 @@ wrap_set_cookie_callback! {
     }
 }
 
-/// Abre o jogo de uma página (itch.io ou item de feed) numa janela, sem adicioná-lo à
-/// Biblioteca. Páginas que só incorporam o jogo (ex.: itch.io) abrem o jogo em si.
+/// Grava o jogo de uma página (itch.io ou item de feed) na Biblioteca, como um jogo
+/// manual, e o abre. Páginas que só incorporam o jogo (ex.: itch.io) abrem o jogo em si.
 fn play_page(request: &Value, show_adult: bool, reply: Reply) {
     let Some(page_url) = request["page_url"].as_str().filter(|url| is_http(url)).map(str::to_string) else {
         return reply(json!({ "ok": false, "error": "jogo inválido" }));
     };
-    let name = request["name"].as_str().unwrap_or("Jogo").to_string();
     let itch_id = request["id"].as_u64();
+    if let Some(game) = catalog::find_by_page(&page_url, itch_id) {
+        // Já conhecido mas removido pelo usuário: não volta para a Biblioteca.
+        if game.removed {
+            return reply(json!({ "ok": false, "error": "Você removeu esse jogo da Biblioteca." }));
+        }
+        let url = game.url.clone();
+        shell::open_game(game, url);
+        return reply(json!({ "ok": true, "added": false }));
+    }
+    let name = request["name"].as_str().unwrap_or("Jogo").to_string();
+    let thumbnail = request["thumbnail"].as_str().filter(|url| is_http(url)).map(str::to_string);
     page_info::fetch(
         page_url.clone(),
         false,
@@ -450,33 +458,34 @@ fn play_page(request: &Value, show_adult: bool, reply: Reply) {
                 return reply(json!({ "ok": false, "error": "Jogo +18. Ligue \"Mostrar jogos +18\" para jogar." }));
             }
             let game_url = info.game_url.clone().unwrap_or_else(|| page_url.clone());
-            // Temporário (não é gravado): roda no perfil principal, como os importados.
             let game = catalog::Game {
-                id: format!("explorar-{:x}", hash(&page_url)),
+                id: String::new(),
                 name: info.title.clone().unwrap_or(name),
                 description: info.description.clone().unwrap_or_default(),
-                url: game_url.clone(),
-                homepage: Some(page_url),
-                thumbnail: info.thumbnail.clone(),
+                // Como no cadastro por link: a página só é guardada quando incorpora o jogo.
+                homepage: (game_url != page_url).then_some(page_url),
+                url: game_url,
+                thumbnail: info.thumbnail.clone().or(thumbnail),
                 tags: info.tags.clone(),
                 removed: false,
                 no_adblock: false,
-                source: Some(EXPLORE_SOURCE.into()),
+                source: None,
                 itch_id,
                 dmm_id: None,
                 added_at: None,
             };
-            shell::open_game(game, game_url);
-            reply(json!({ "ok": true }));
+            let saved = catalog::add_user_game(game)
+                .and_then(|game| library::write(&catalog::load()).map(|_| game));
+            match saved {
+                Ok(game) => {
+                    let url = game.url.clone();
+                    shell::open_game(game, url);
+                    reply(json!({ "ok": true, "added": true }));
+                }
+                Err(error) => reply(json!({ "ok": false, "error": error.to_string() })),
+            }
         }),
     );
-}
-
-fn hash(text: &str) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    text.hash(&mut hasher);
-    hasher.finish()
 }
 
 fn is_http(url: &str) -> bool {

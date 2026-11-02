@@ -917,7 +917,7 @@
     button.disabled = false;
     button.textContent = "Jogar";
     if (!result.ok) return showToast(result.error ?? "Não foi possível abrir o jogo.");
-    // Jogo do DMM gravado na Biblioteca: recarrega para ele aparecer (a view continua Explorar).
+    // Jogo gravado na Biblioteca: recarrega para ele aparecer (a view continua Explorar).
     if (result.added) location.reload();
   }
 

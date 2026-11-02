@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Licenças de terceiros — web-avenger</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 24px; }
+    pre { white-space: pre-wrap; background: #f4f4f4; padding: 12px; border-radius: 6px; }
+    li { margin: 2px 0; }
+  </style>
+</head>
+<body>
+  <h1>Licenças de terceiros</h1>
+  <p>O web-avenger é distribuído sob a licença MIT (arquivo <code>LICENSE</code>). Ele inclui os
+    componentes abaixo, cada um sob a própria licença. O Chromium Embedded Framework está em
+    <code>CEF-LICENSE.txt</code>, e o Chromium e as bibliotecas dele, em <code>CREDITS.html</code>.</p>
+  <p>Os arquivos sob a MPL-2.0 não foram modificados; o código-fonte deles está em
+    <a href="https://crates.io">crates.io</a>, no nome e na versão indicados.</p>
+
+  <h2>Crates Rust</h2>
+  <ul>
+    {{#each overview}}
+    <li><a href="#{{id}}">{{name}}</a> ({{count}})</li>
+    {{/each}}
+  </ul>
+  {{#each licenses}}
+  <h3 id="{{id}}">{{name}}</h3>
+  <p>Usada por:</p>
+  <ul>
+    {{#each used_by}}
+    <li><a href="{{#if crate.repository}}{{crate.repository}}{{else}}https://crates.io/crates/{{crate.name}}{{/if}}">{{crate.name}} {{crate.version}}</a></li>
+    {{/each}}
+  </ul>
+  <pre>{{text}}</pre>
+  {{/each}}
+</body>
+</html>

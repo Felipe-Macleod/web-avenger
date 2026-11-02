@@ -4,7 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const DEFAULT_CATALOG: &str = include_str!("../games.json");
+/// O `games.json` da raiz, ou `[]` se ele não existir no build (ver `build.rs`).
+const DEFAULT_CATALOG: &str = include_str!(concat!(env!("OUT_DIR"), "/games.json"));
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Game {

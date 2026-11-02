@@ -3,6 +3,7 @@ name = "web-avenger"
 version = "0.1.0"
 edition = "2024"
 description = "Agregador standalone de jogos WebAssembly com Chromium embutido (CEF)"
+license = "MIT"
 publish = false
 
 [dependencies]

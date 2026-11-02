@@ -4,6 +4,11 @@ $ErrorActionPreference = 'Stop'
 
 Set-Location (Join-Path $PSScriptRoot '..')
 $BuildProfile = if ($env:PROFILE) { $env:PROFILE } else { 'release' }
+# O `cargo install` coloca o cargo-about aqui, que nem sempre está no PATH.
+$env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
+if (-not (Get-Command cargo-about -ErrorAction SilentlyContinue)) {
+    throw 'Falta o cargo-about (licenças de terceiros): cargo install --locked cargo-about --features cli'
+}
 # O cargo escreve o progresso no stderr; com 'Stop', o PowerShell 5.1 trataria isso
 # como erro quando a saída é redirecionada. O resultado vem do código de saída.
 $ErrorActionPreference = 'Continue'
@@ -42,6 +47,14 @@ foreach ($dir in $CefDirs) {
     } | Copy-Item -Destination $Dist -Recurse -Force
 }
 Copy-Item "$TargetDir\web-avenger.exe" $Dist
+
+# Licenças: a do app, a do CEF (o CREDITS.html do CEF só cobre o Chromium) e a dos crates.
+Copy-Item LICENSE "$Dist\LICENSE.txt"
+Copy-Item licenses\CEF.txt "$Dist\CEF-LICENSE.txt"
+$ErrorActionPreference = 'Continue'
+cargo about generate --fail -c licenses\about.toml licenses\about.hbs -o "$Dist\THIRD_PARTY_LICENSES.html"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$ErrorActionPreference = 'Stop'
 
 $Size = (Get-ChildItem $Dist -Recurse -File | Measure-Object Length -Sum).Sum / 1MB
 Write-Host ("Pronto: $Dist\web-avenger.exe ({0:N0} MB)" -f $Size)

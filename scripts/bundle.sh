@@ -4,6 +4,12 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 PROFILE="${PROFILE:-release}"
+# O `cargo install` coloca o cargo-about aqui, que nem sempre está no PATH.
+export PATH="$HOME/.cargo/bin:$PATH"
+if ! command -v cargo-about >/dev/null; then
+  echo "Falta o cargo-about (licenças de terceiros): cargo install --locked cargo-about --features cli" >&2
+  exit 1
+fi
 cargo build --profile "$PROFILE"
 
 TARGET_DIR="target/$PROFILE"
@@ -31,5 +37,10 @@ cp "$TARGET_DIR/web-avenger" "$DIST/"
 strip --strip-unneeded "$DIST/libcef.so"
 # O sandbox SUID não é usado (rodamos com no_sandbox).
 rm -f "$DIST/chrome-sandbox"
+
+# Licenças: a do app, a do CEF (o CREDITS.html do CEF só cobre o Chromium) e a dos crates.
+cp LICENSE "$DIST/LICENSE.txt"
+cp licenses/CEF.txt "$DIST/CEF-LICENSE.txt"
+cargo about generate --fail -c licenses/about.toml licenses/about.hbs -o "$DIST/THIRD_PARTY_LICENSES.html"
 
 echo "Pronto: $DIST/web-avenger ($(du -sh "$DIST" | cut -f1))"

@@ -1,0 +1,20 @@
+# Configuração do `cargo about` (gera THIRD_PARTY_LICENSES.html no bundle, ver scripts/bundle.sh).
+# Licenças aceitas nas dependências; uma dependência nova com outra licença faz o bundle falhar.
+accepted = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "Unlicense",
+    "Unicode-3.0",
+    "MPL-2.0",
+    "CDLA-Permissive-2.0",
+    "bzip2-1.0.6",
+]
+targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true

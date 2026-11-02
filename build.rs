@@ -20,6 +20,14 @@ fn main() {
     if let Some(client_id) = client_id.filter(|id| !id.is_empty()) {
         println!("cargo:rustc-env=ITCH_CLIENT_ID={client_id}");
     }
+
+    // Catálogo padrão (`games.json` da raiz, não versionado): embutido no binário se existir;
+    // sem ele, o catálogo padrão fica vazio (ver `src/catalog.rs`).
+    println!("cargo:rerun-if-changed=games.json");
+    let catalog = std::fs::read_to_string("games.json").unwrap_or_else(|_| "[]".into());
+    let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR não definido");
+    std::fs::write(std::path::Path::new(&out_dir).join("games.json"), catalog)
+        .expect("falha ao gravar o catálogo padrão");
 }
 
 /// Valor de `NOME=valor` no `.env` da raiz (aceita aspas e comentários com `#`).

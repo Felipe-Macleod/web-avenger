@@ -4,14 +4,14 @@ Agregador standalone de jogos WebAssembly, escrito em Rust. Os jogos rodam **den
 
 ## Build
 
-Requisitos: Rust 1.85+, `cmake` e `ninja`. O primeiro build baixa o CEF (~1 GB descompactado).
+Requisitos: Rust 1.85+, `cmake`, `ninja` e o `cargo-about` (`cargo install --locked cargo-about --features cli`, usado pelos scripts de bundle). O primeiro build baixa o CEF (~1 GB descompactado).
 
 ```sh
 ./scripts/bundle.sh          # cargo build --release + monta dist/web-avenger/
 ./dist/web-avenger/web-avenger
 ```
 
-A pasta `dist/web-avenger/` é autocontida (~370 MB): basta copiá-la para outra máquina Linux x86_64.
+A pasta `dist/web-avenger/` é autocontida (~370 MB): basta copiá-la para outra máquina Linux x86_64. Ela leva as licenças junto (ver [Licença](#licença)); não as remova ao distribuir.
 
 Para não baixar o CEF a cada `cargo clean`, exporte uma cópia compartilhada:
 
@@ -52,7 +52,7 @@ Páginas do **itch.io** são reconhecidas sem chave de API: o nome, a capa e as 
 
 Para alterar um jogo, clique com o botão direito no card (ou use a tecla Menu / Shift+F10) e escolha **Editar jogo**. No modal de edição, **Remover jogo** (clique duas vezes para confirmar) tira o jogo da Biblioteca; jogos do catálogo padrão ficam marcados com `"removed": true` no seu `games.json`. Editar um jogo do catálogo padrão grava uma cópia em `~/.config/web-avenger/games.json`, que prevalece sobre a original.
 
-O catálogo padrão fica em `games.json` (embutido no binário). Também dá para editar `~/.config/web-avenger/games.json` à mão para adicionar ou sobrescrever jogos:
+O catálogo padrão fica em `games.json` na raiz do projeto, que não é versionado: se existir, é embutido no binário no build; sem ele, a Biblioteca começa vazia. Também dá para editar `~/.config/web-avenger/games.json` à mão para adicionar ou sobrescrever jogos:
 
 ```json
 [
@@ -161,3 +161,14 @@ Os perfis do Chromium ficam em `~/.local/share/web-avenger/` (`%LOCALAPPDATA%\we
 - **Um perfil por jogo manual** (`game-<id>/`): cada jogo da Fonte "Manual" roda isolado, como numa janela anônima, mas os dados persistem entre sessões. Um jogo não enxerga cookies nem saves dos outros, nem a sessão do itch.io. Na primeira vez que um jogo manual abre com perfil próprio, o IndexedDB da origem dele é copiado do perfil principal (onde ficam os saves de Unity/Emscripten); o localStorage antigo não é migrado (é um banco único para todas as origens).
 
 Remover um jogo não apaga a pasta do perfil dele.
+
+## Licença
+
+O web-avenger é distribuído sob a licença [MIT](LICENSE). As dependências mantêm as próprias licenças, e os scripts de bundle colocam em `dist/web-avenger/`:
+
+- `LICENSE.txt`: a licença do app;
+- `CEF-LICENSE.txt`: a do Chromium Embedded Framework (`licenses/CEF.txt`);
+- `CREDITS.html`: a do Chromium e das bibliotecas dele, que vem com o CEF;
+- `THIRD_PARTY_LICENSES.html`: a dos crates Rust, gerada pelo `cargo about` a partir do `Cargo.lock` (configuração em `licenses/about.toml`). Uma dependência nova com uma licença fora da lista `accepted` faz o bundle falhar, para ser revisada antes.
+
+Os crates `adblock` e `symphonia` são MPL-2.0: os arquivos deles não foram modificados, e o código-fonte está no crates.io. Se algum dia forem alterados, as alterações precisam ser publicadas sob a MPL-2.0.

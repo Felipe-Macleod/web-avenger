@@ -906,6 +906,7 @@
       explore.error = result.error ?? t("explore.load_failed");
     }
     renderExplore();
+    loadMoreIfNearEnd(); // a página nova não encheu a tela: o rodapé continua à vista
   }
 
   function exploreCard(item) {
@@ -978,6 +979,20 @@
     refreshExploreOptions();
   });
   exploreMore.addEventListener("click", () => loadExplore(false));
+
+  // Rolagem infinita (itch.io, a única lista com várias páginas): carrega a próxima página
+  // quando o rodapé chega perto do fim da área visível. O botão continua como alternativa.
+  const scrollArea = document.querySelector("main");
+  const exploreFooter = document.getElementById("explore-footer");
+  const AUTOLOAD_MARGIN = 400;
+  function loadMoreIfNearEnd() {
+    if (currentView !== "explore" || !explore.more || explore.loading || explore.error) return;
+    if (exploreFooter.getBoundingClientRect().top < scrollArea.getBoundingClientRect().bottom + AUTOLOAD_MARGIN) {
+      loadExplore(false);
+    }
+  }
+  new IntersectionObserver(loadMoreIfNearEnd, { root: scrollArea, rootMargin: `0px 0px ${AUTOLOAD_MARGIN}px 0px` })
+    .observe(exploreFooter);
 
   // Cadastro de feed: só grava se o feed carregar (o nome vazio vira o título dele).
   const feedDialog = document.getElementById("feed-dialog");

@@ -41,6 +41,8 @@ pub struct Settings {
     pub mappings: BTreeMap<String, serde_json::Value>,
     /// Feeds do Explorar, na ordem do cadastro.
     pub feeds: Vec<Feed>,
+    /// Idioma do app (código de `locales/`, ex.: `"en"`); `None` = idioma do sistema.
+    pub language: Option<String>,
 }
 
 impl Default for Settings {
@@ -53,6 +55,7 @@ impl Default for Settings {
             button_layout: ButtonLayout::default(),
             mappings: BTreeMap::new(),
             feeds: Vec::new(),
+            language: None,
         }
     }
 }
@@ -81,8 +84,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn configuracao_antiga_sem_feeds() {
+    fn configuracao_antiga_sem_feeds_nem_idioma() {
         let settings: Settings = serde_json::from_str(r#"{"show_adult": true}"#).unwrap();
         assert!(settings.show_adult && settings.feeds.is_empty() && settings.fullscreen_games);
+        assert!(settings.language.is_none());
     }
 }

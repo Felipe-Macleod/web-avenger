@@ -270,15 +270,15 @@
 </head>
 <body>
 <div class="app">
-<aside class="sidebar" aria-label="Navegação">
+<aside class="sidebar" aria-label="Navegação" data-i18n-aria-label="nav.aria">
   <h1 class="brand">Web <span>Avenger</span></h1>
   <nav id="sidebar-nav"></nav>
   <div class="sidebar-footer">
-    <button class="nav-item" data-view="settings"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="label">Configurações</span></button>
+    <button class="nav-item" data-view="settings"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="label" data-i18n="view.settings">Configurações</span></button>
     <div class="shortcuts">
-      <span><kbd>F1</kbd> Biblioteca</span>
-      <span><kbd>F11</kbd> Tela cheia</span>
-      <span><kbd>F5</kbd> Recarregar</span>
+      <span><kbd>F1</kbd> <span data-i18n="shortcut.library">Biblioteca</span></span>
+      <span><kbd>F11</kbd> <span data-i18n="shortcut.fullscreen">Tela cheia</span></span>
+      <span><kbd>F5</kbd> <span data-i18n="shortcut.reload">Recarregar</span></span>
     </div>
   </div>
 </aside>
@@ -287,38 +287,38 @@
   <h2 id="view-title">Todos os jogos</h2>
   <span class="count" id="count"></span>
   <div class="toolbar-actions" id="library-actions">
-    <input type="search" id="search" placeholder="Buscar jogo ou tag..." autofocus>
+    <input type="search" id="search" placeholder="Buscar jogo ou tag..." data-i18n-placeholder="toolbar.search" autofocus>
     <div id="explore-actions" hidden>
-      <select id="explore-store" aria-label="Loja" title="Loja">
+      <select id="explore-store" aria-label="Loja" title="Loja" data-i18n-aria-label="explore.store" data-i18n-title="explore.store">
         <option value="itch">itch.io</option>
         <option value="dmm">DMM GAMES</option>
         <option value="fanza">FANZA GAMES</option>
       </select>
-      <select id="explore-sort" aria-label="Ordenar por" title="Ordenar por">
-        <option value="">Populares</option>
-        <option value="top-rated">Mais bem avaliados</option>
-        <option value="newest">Novos</option>
-        <option value="top-sellers">Mais vendidos</option>
+      <select id="explore-sort" aria-label="Ordenar por" title="Ordenar por" data-i18n-aria-label="toolbar.sort_by" data-i18n-title="toolbar.sort_by">
+        <option value="" data-i18n="explore.sort.popular">Populares</option>
+        <option value="top-rated" data-i18n="explore.sort.top_rated">Mais bem avaliados</option>
+        <option value="newest" data-i18n="explore.sort.newest">Novos</option>
+        <option value="top-sellers" data-i18n="explore.sort.top_sellers">Mais vendidos</option>
         <option value="nsfw">+18</option>
       </select>
-      <select id="explore-dmm-sort" aria-label="Ordenar por" title="Ordenar por">
-        <option value="popular">Populares</option>
-        <option value="new">Novos</option>
-        <option value="start">Mais jogados</option>
+      <select id="explore-dmm-sort" aria-label="Ordenar por" title="Ordenar por" data-i18n-aria-label="toolbar.sort_by" data-i18n-title="toolbar.sort_by">
+        <option value="popular" data-i18n="explore.sort.popular">Populares</option>
+        <option value="new" data-i18n="explore.sort.newest">Novos</option>
+        <option value="start" data-i18n="explore.sort.most_played">Mais jogados</option>
       </select>
-      <button class="action danger" id="feed-remove" hidden>Remover feed</button>
-      <button class="action" id="feed-add" title="Cadastrar um feed RSS ou Atom">+ Feed</button>
+      <button class="action danger" id="feed-remove" hidden data-i18n="explore.feed_remove">Remover feed</button>
+      <button class="action" id="feed-add" title="Cadastrar um feed RSS ou Atom" data-i18n-title="explore.feed_add_title">+ Feed</button>
     </div>
-    <select id="sort" aria-label="Ordenar por" title="Ordenar por">
-      <option value="recent">Recentes</option>
-      <option value="name">Nome</option>
-      <option value="playtime">Tempo de jogo</option>
+    <select id="sort" aria-label="Ordenar por" title="Ordenar por" data-i18n-aria-label="toolbar.sort_by" data-i18n-title="toolbar.sort_by">
+      <option value="recent" data-i18n="sort.recent">Recentes</option>
+      <option value="name" data-i18n="sort.name">Nome</option>
+      <option value="playtime" data-i18n="sort.playtime">Tempo de jogo</option>
     </select>
-    <div class="view-toggle" role="group" aria-label="Visualização">
-      <button data-mode="grid" title="Grade" aria-label="Grade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
-      <button data-mode="list" title="Lista" aria-label="Lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+    <div class="view-toggle" role="group" aria-label="Visualização" data-i18n-aria-label="toolbar.view">
+      <button data-mode="grid" title="Grade" aria-label="Grade" data-i18n-title="toolbar.grid" data-i18n-aria-label="toolbar.grid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+      <button data-mode="list" title="Lista" aria-label="Lista" data-i18n-title="toolbar.list" data-i18n-aria-label="toolbar.list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
     </div>
-    <button class="action primary" id="add-game" title="Adicionar jogo">+ Adicionar</button>
+    <button class="action primary" id="add-game" title="Adicionar jogo" data-i18n-title="game.add_title" data-i18n="toolbar.add">+ Adicionar</button>
   </div>
 </header>
 <main>
@@ -328,120 +328,133 @@
 
   <div id="explore" hidden>
     <div id="explore-grid"></div>
-    <div id="explore-footer"><button class="action" id="explore-more" hidden>Carregar mais</button></div>
+    <div id="explore-footer"><button class="action" id="explore-more" hidden data-i18n="explore.more">Carregar mais</button></div>
   </div>
 
   <div id="settings" hidden>
     <section class="panel">
-      <h2>Jogos</h2>
+      <h2 data-i18n="settings.language">Idioma</h2>
       <div class="row">
         <div class="text">
-          <strong>Abrir jogos em tela cheia</strong>
-          <span>A janela do jogo já abre em tela cheia. <kbd>F11</kbd> alterna a qualquer momento.</span>
+          <strong data-i18n="settings.language">Idioma</strong>
+          <span data-i18n="settings.language_desc">No automático, o app usa o idioma do sistema. A Biblioteca recarrega ao trocar.</span>
+        </div>
+        <select id="language" aria-label="Idioma" data-i18n-aria-label="settings.language">
+          <option value="" data-i18n="settings.language_auto">Automático (idioma do sistema)</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 data-i18n="settings.games">Jogos</h2>
+      <div class="row">
+        <div class="text">
+          <strong data-i18n="settings.fullscreen">Abrir jogos em tela cheia</strong>
+          <span data-i18n-html="settings.fullscreen_desc">A janela do jogo já abre em tela cheia. <kbd>F11</kbd> alterna a qualquer momento.</span>
         </div>
         <label class="switch">
-          <input type="checkbox" id="fullscreen-games" role="switch" aria-label="Abrir jogos em tela cheia">
+          <input type="checkbox" id="fullscreen-games" role="switch" aria-label="Abrir jogos em tela cheia" data-i18n-aria-label="settings.fullscreen">
           <span class="track"></span>
         </label>
       </div>
       <div class="row">
         <div class="text">
-          <strong>Maximizar o player do jogo</strong>
-          <span>Players Unity WebGL e jogos do DMM ocupam a janela inteira, mantendo a proporção do jogo e sem o resto da página.</span>
+          <strong data-i18n="settings.maximize">Maximizar o player do jogo</strong>
+          <span data-i18n="settings.maximize_desc">Players Unity WebGL e jogos do DMM ocupam a janela inteira, mantendo a proporção do jogo e sem o resto da página.</span>
         </div>
         <label class="switch">
-          <input type="checkbox" id="maximize-player" role="switch" aria-label="Maximizar o player do jogo">
+          <input type="checkbox" id="maximize-player" role="switch" aria-label="Maximizar o player do jogo" data-i18n-aria-label="settings.maximize">
           <span class="track"></span>
         </label>
       </div>
       <div class="row">
         <div class="text">
-          <strong>Mostrar jogos +18</strong>
-          <span>Desligado, jogos com tags como NSFW, Porn, Hentai, Adult ou Erotic ficam escondidos da Biblioteca.</span>
+          <strong data-i18n="settings.adult">Mostrar jogos +18</strong>
+          <span data-i18n="settings.adult_desc">Desligado, jogos com tags como NSFW, Porn, Hentai, Adult ou Erotic ficam escondidos da Biblioteca.</span>
         </div>
         <label class="switch">
-          <input type="checkbox" id="show-adult" role="switch" aria-label="Mostrar jogos +18">
+          <input type="checkbox" id="show-adult" role="switch" aria-label="Mostrar jogos +18" data-i18n-aria-label="settings.adult">
           <span class="track"></span>
         </label>
       </div>
       <div class="row">
-        <div class="text"><span>As mudanças valem para jogos abertos a partir de agora.</span></div>
-        <span class="saved" id="saved-games">✓ Salvo</span>
+        <div class="text"><span data-i18n="settings.applies_next">As mudanças valem para jogos abertos a partir de agora.</span></div>
+        <span class="saved" id="saved-games" data-i18n="settings.saved">✓ Salvo</span>
       </div>
     </section>
 
     <section class="panel" id="connected-apps">
-      <h2>Apps conectados</h2>
+      <h2 data-i18n="apps.title">Apps conectados</h2>
       <div class="row app-row">
         <div class="app-logo" aria-hidden="true">itch</div>
         <div class="text">
           <strong>itch.io</strong>
-          <span id="itch-status">Verificando…</span>
+          <span id="itch-status" data-i18n="apps.checking">Verificando…</span>
           <span class="app-message" id="itch-message" hidden></span>
         </div>
         <div class="actions">
-          <button class="action danger" id="itch-disconnect" hidden>Desconectar</button>
-          <button class="action" id="itch-sync" hidden>Sincronizar</button>
-          <button class="action primary" id="itch-connect" hidden>Conectar</button>
+          <button class="action danger" id="itch-disconnect" hidden data-i18n="apps.disconnect">Desconectar</button>
+          <button class="action" id="itch-sync" hidden data-i18n="apps.sync">Sincronizar</button>
+          <button class="action primary" id="itch-connect" hidden data-i18n="apps.connect">Conectar</button>
         </div>
       </div>
       <div class="row app-row">
         <div class="app-logo" aria-hidden="true">DMM</div>
         <div class="text">
           <strong>DMM GAMES / FANZA GAMES</strong>
-          <span id="dmm-status">Verificando…</span>
+          <span id="dmm-status" data-i18n="apps.checking">Verificando…</span>
           <span class="app-message" id="dmm-message" hidden></span>
         </div>
         <div class="actions">
-          <button class="action danger" id="dmm-disconnect" hidden>Desconectar</button>
-          <button class="action" id="dmm-sync" hidden>Sincronizar</button>
-          <button class="action primary" id="dmm-connect" hidden>Conectar</button>
+          <button class="action danger" id="dmm-disconnect" hidden data-i18n="apps.disconnect">Desconectar</button>
+          <button class="action" id="dmm-sync" hidden data-i18n="apps.sync">Sincronizar</button>
+          <button class="action primary" id="dmm-connect" hidden data-i18n="apps.connect">Conectar</button>
         </div>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Controle</h2>
+      <h2 data-i18n="settings.controller">Controle</h2>
       <div class="row">
         <div class="text">
-          <strong>Tradução de input</strong>
-          <span>Apresenta controles que não são de Xbox (ex.: Switch Pro Controller, DualSense) aos jogos como um controle de Xbox.</span>
+          <strong data-i18n="settings.input_translation">Tradução de input</strong>
+          <span data-i18n="settings.input_translation_desc">Apresenta controles que não são de Xbox (ex.: Switch Pro Controller, DualSense) aos jogos como um controle de Xbox.</span>
         </div>
         <label class="switch">
-          <input type="checkbox" id="input-translation" role="switch" aria-label="Tradução de input">
+          <input type="checkbox" id="input-translation" role="switch" aria-label="Tradução de input" data-i18n-aria-label="settings.input_translation">
           <span class="track"></span>
         </label>
       </div>
       <div class="row" id="layout-row">
         <div class="text">
-          <strong>Botões de controles Nintendo</strong>
-          <span>Por posição: o B (embaixo) age como o A do Xbox. Por rótulo: o A age como A.</span>
+          <strong data-i18n="settings.nintendo_buttons">Botões de controles Nintendo</strong>
+          <span data-i18n="settings.nintendo_buttons_desc">Por posição: o B (embaixo) age como o A do Xbox. Por rótulo: o A age como A.</span>
         </div>
-        <select id="button-layout" aria-label="Botões de controles Nintendo">
-          <option value="position">Por posição</option>
-          <option value="label">Por rótulo</option>
+        <select id="button-layout" aria-label="Botões de controles Nintendo" data-i18n-aria-label="settings.nintendo_buttons">
+          <option value="position" data-i18n="settings.by_position">Por posição</option>
+          <option value="label" data-i18n="settings.by_label">Por rótulo</option>
         </select>
       </div>
       <div class="row">
-        <div class="text"><span>As mudanças valem para jogos abertos a partir de agora.</span></div>
-        <span class="saved" id="saved">✓ Salvo</span>
+        <div class="text"><span data-i18n="settings.applies_next">As mudanças valem para jogos abertos a partir de agora.</span></div>
+        <span class="saved" id="saved" data-i18n="settings.saved">✓ Salvo</span>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Mapeamento manual</h2>
+      <h2 data-i18n="mapper.title">Mapeamento manual</h2>
       <div class="row">
         <div class="text">
-          <strong>Controle</strong>
-          <span>Para controles genéricos que os jogos não reconhecem: aperte cada botão quando pedido. Vale com a tradução de input ligada.</span>
+          <strong data-i18n="settings.controller">Controle</strong>
+          <span data-i18n="mapper.desc">Para controles genéricos que os jogos não reconhecem: aperte cada botão quando pedido. Vale com a tradução de input ligada.</span>
         </div>
-        <select id="mapper-select" aria-label="Controle a mapear"></select>
+        <select id="mapper-select" aria-label="Controle a mapear" data-i18n-aria-label="mapper.select"></select>
       </div>
       <div class="row">
-        <div class="text"><span id="mapper-status">Conecte um controle e aperte um botão.</span></div>
+        <div class="text"><span id="mapper-status" data-i18n="mapper.connect">Conecte um controle e aperte um botão.</span></div>
         <div class="actions">
-          <button class="action" id="mapper-remove" hidden>Remover mapeamento</button>
-          <button class="action primary" id="mapper-start" disabled>Mapear</button>
+          <button class="action" id="mapper-remove" hidden data-i18n="mapper.remove">Remover mapeamento</button>
+          <button class="action primary" id="mapper-start" disabled data-i18n="mapper.start">Mapear</button>
         </div>
       </div>
       <div class="wizard" id="wizard" hidden>
@@ -450,16 +463,16 @@
         <span class="prompt" id="wizard-prompt"></span>
         <span class="step" id="wizard-detail"></span>
         <div class="actions" style="display:flex; gap:8px">
-          <button class="action" id="wizard-skip">Pular</button>
-          <button class="action" id="wizard-cancel">Cancelar</button>
+          <button class="action" id="wizard-skip" data-i18n="wizard.skip">Pular</button>
+          <button class="action" id="wizard-cancel" data-i18n="common.cancel">Cancelar</button>
         </div>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Testar controle</h2>
+      <h2 data-i18n="tester.title">Testar controle</h2>
       <div class="tester">
-        <p class="hint" id="tester-hint">Pressione qualquer botão do controle para detectá-lo.</p>
+        <p class="hint" id="tester-hint" data-i18n="tester.hint">Pressione qualquer botão do controle para detectá-lo.</p>
         <div id="pads"></div>
       </div>
     </section>
@@ -469,87 +482,111 @@
 </div>
 <dialog id="game-dialog" aria-labelledby="game-dialog-title">
   <form id="url-form">
-    <h2 id="game-dialog-title">Adicionar jogo</h2>
+    <h2 id="game-dialog-title" data-i18n="game.add_title">Adicionar jogo</h2>
     <div class="fields">
-      <label class="field"><span>URL do jogo</span>
-        <input name="url" type="url" required pattern="(https?|file|webavenger)://.+" placeholder="https://exemplo.com/jogo/" autocomplete="off">
+      <label class="field"><span data-i18n="game.url">URL do jogo</span>
+        <input name="url" type="url" required pattern="(https?|file|webavenger)://.+" placeholder="https://exemplo.com/jogo/" data-i18n-placeholder="game.url_placeholder" autocomplete="off">
       </label>
-      <p class="hint-text" id="url-status">O nome e a capa são preenchidos a partir da página. Links <code>webavenger://</code> compartilhados também funcionam aqui.</p>
+      <p class="hint-text" id="url-status" data-i18n-html="game.url_hint">O nome e a capa são preenchidos a partir da página. Links <code>webavenger://</code> compartilhados também funcionam aqui.</p>
     </div>
     <div class="dialog-actions">
-      <button class="action" type="button" data-close>Cancelar</button>
-      <button class="action primary" type="submit" id="url-next">Continuar</button>
+      <button class="action" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+      <button class="action primary" type="submit" id="url-next" data-i18n="game.continue">Continuar</button>
     </div>
   </form>
   <form id="game-form" hidden>
-    <h2 id="game-form-title">Adicionar jogo</h2>
+    <h2 id="game-form-title" data-i18n="game.add_title">Adicionar jogo</h2>
     <div class="fields">
-      <label class="field"><span>Nome</span>
-        <input name="name" required maxlength="120" placeholder="Ex.: Skate 3 Browser" autocomplete="off">
+      <label class="field"><span data-i18n="game.name">Nome</span>
+        <input name="name" required maxlength="120" placeholder="Ex.: Meu jogo" data-i18n-placeholder="game.name_placeholder" autocomplete="off">
       </label>
-      <label class="field"><span>URL do jogo</span>
-        <input name="url" type="url" required pattern="(https?|file)://.+" placeholder="https://exemplo.com/jogo/" autocomplete="off">
+      <label class="field"><span data-i18n="game.url">URL do jogo</span>
+        <input name="url" type="url" required pattern="(https?|file)://.+" placeholder="https://exemplo.com/jogo/" data-i18n-placeholder="game.url_placeholder" autocomplete="off">
         <small class="hint-text" id="detected-hint" hidden></small>
         <input type="hidden" name="homepage">
       </label>
-      <label class="field"><span>Imagem de capa <small>(URL, opcional)</small></span>
-        <input name="thumbnail" type="url" pattern="(https?|file|data):.+" placeholder="https://exemplo.com/capa.jpg" autocomplete="off">
+      <label class="field"><span data-i18n-html="game.cover">Imagem de capa <small>(URL, opcional)</small></span>
+        <input name="thumbnail" type="url" pattern="(https?|file|data):.+" placeholder="https://exemplo.com/capa.jpg" data-i18n-placeholder="game.cover_placeholder" autocomplete="off">
       </label>
-      <div class="preview" id="game-preview">Sem capa</div>
-      <label class="field"><span>Descrição <small>(opcional)</small></span>
+      <div class="preview" id="game-preview" data-i18n="game.no_cover">Sem capa</div>
+      <label class="field"><span data-i18n-html="game.description">Descrição <small>(opcional)</small></span>
         <textarea name="description" rows="3" maxlength="300"></textarea>
       </label>
-      <label class="field"><span>Tags <small>(separadas por vírgula, opcional)</small></span>
-        <input name="tags" placeholder="wasm, webgpu, esporte" autocomplete="off">
+      <label class="field"><span data-i18n-html="game.tags">Tags <small>(separadas por vírgula, opcional)</small></span>
+        <input name="tags" placeholder="wasm, webgpu, esporte" data-i18n-placeholder="game.tags_placeholder" autocomplete="off">
       </label>
       <div class="row compact">
         <div class="text">
-          <strong>Bloquear anúncios</strong>
-          <span>Desligue se o jogo travar ou não carregar. Vale na próxima vez que o jogo abrir.</span>
+          <strong data-i18n="game.adblock">Bloquear anúncios</strong>
+          <span data-i18n="game.adblock_desc">Desligue se o jogo travar ou não carregar. Vale na próxima vez que o jogo abrir.</span>
         </div>
         <label class="switch">
-          <input type="checkbox" name="adblock" role="switch" aria-label="Bloquear anúncios" checked>
+          <input type="checkbox" name="adblock" role="switch" aria-label="Bloquear anúncios" data-i18n-aria-label="game.adblock" checked>
           <span class="track"></span>
         </label>
       </div>
       <p class="form-error" id="game-error" hidden></p>
     </div>
     <div class="dialog-actions">
-      <button class="action" type="button" id="game-back" style="margin-right:auto">Voltar</button>
-      <button class="action danger" type="button" id="game-remove" style="margin-right:auto" hidden>Remover jogo</button>
-      <button class="action" type="button" data-close>Cancelar</button>
-      <button class="action primary" type="submit" id="game-submit">Adicionar</button>
+      <button class="action" type="button" id="game-back" style="margin-right:auto" data-i18n="game.back">Voltar</button>
+      <button class="action danger" type="button" id="game-remove" style="margin-right:auto" hidden data-i18n="game.remove">Remover jogo</button>
+      <button class="action" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+      <button class="action primary" type="submit" id="game-submit" data-i18n="common.add">Adicionar</button>
     </div>
   </form>
 </dialog>
 
 <dialog id="feed-dialog" aria-labelledby="feed-dialog-title">
   <form id="feed-form">
-    <h2 id="feed-dialog-title">Adicionar feed</h2>
+    <h2 id="feed-dialog-title" data-i18n="feed.title">Adicionar feed</h2>
     <div class="fields">
-      <label class="field"><span>URL do feed</span>
-        <input name="url" type="url" required pattern="https?://.+" placeholder="https://exemplo.com/feed.xml" autocomplete="off">
+      <label class="field"><span data-i18n="feed.url">URL do feed</span>
+        <input name="url" type="url" required pattern="https?://.+" placeholder="https://exemplo.com/feed.xml" data-i18n-placeholder="feed.url_placeholder" autocomplete="off">
       </label>
-      <label class="field"><span>Nome</span>
-        <input name="name" maxlength="80" placeholder="O título do feed" autocomplete="off">
+      <label class="field"><span data-i18n="game.name">Nome</span>
+        <input name="name" maxlength="80" placeholder="O título do feed" data-i18n-placeholder="feed.name_placeholder" autocomplete="off">
       </label>
-      <p class="hint-text">Feeds RSS ou Atom. Os itens aparecem como jogos no Explorar.</p>
+      <p class="hint-text" data-i18n="feed.hint">Feeds RSS ou Atom. Os itens aparecem como jogos no Explorar.</p>
       <p class="form-error" id="feed-error" hidden></p>
     </div>
     <div class="dialog-actions">
-      <button class="action" type="button" data-close>Cancelar</button>
-      <button class="action primary" type="submit" id="feed-submit">Adicionar</button>
+      <button class="action" type="button" data-close data-i18n="common.cancel">Cancelar</button>
+      <button class="action primary" type="submit" id="feed-submit" data-i18n="common.add">Adicionar</button>
     </div>
   </form>
 </dialog>
 <div class="context-menu" id="card-menu" role="menu" hidden>
-  <button role="menuitem" data-action="edit">Editar jogo</button>
-  <button role="menuitem" data-action="share">Compartilhar (copiar link)</button>
-  <button role="menuitem" data-action="shortcut">Criar atalho na área de trabalho</button>
+  <button role="menuitem" data-action="edit" data-i18n="menu.edit">Editar jogo</button>
+  <button role="menuitem" data-action="share" data-i18n="menu.share">Compartilhar (copiar link)</button>
+  <button role="menuitem" data-action="shortcut" data-i18n="menu.shortcut">Criar atalho na área de trabalho</button>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
   const GAMES = /*GAMES*/[];
+
+  // ---- Idioma ----
+  // `avengerLocale` é injetado pelo launcher (ver src/i18n.rs): os textos de `locales/`
+  // no idioma em uso, com o pt-BR por baixo. Sem ele, fica o texto em português do HTML.
+  const L = window.avengerLocale ?? { lang: "pt-BR", strings: {}, languages: [] };
+  document.documentElement.lang = L.lang;
+  // `t(chave, {nome: valor})`: o texto com cada `{nome}` trocado.
+  function t(key, vars = {}) {
+    const text = L.strings[key] ?? key;
+    return text.replace(/\{(\w+)\}/g, (match, name) => (name in vars ? String(vars[name]) : match));
+  }
+  // Plural: `chave.one` para 1, `chave.other` para o resto (com `{count}`).
+  const tn = (key, count, vars = {}) => t(`${key}.${count === 1 ? "one" : "other"}`, { count, ...vars });
+  // Textos fixos do HTML: `data-i18n` (texto), `data-i18n-html` (com marcação, dos arquivos
+  // de `locales/`) e os atributos `placeholder`, `title` e `aria-label`.
+  function applyI18n(root) {
+    if (!window.avengerLocale) return;
+    for (const node of root.querySelectorAll("[data-i18n]")) node.textContent = t(node.dataset.i18n);
+    for (const node of root.querySelectorAll("[data-i18n-html]")) node.innerHTML = t(node.dataset.i18nHtml);
+    for (const [attr, key] of [["placeholder", "i18nPlaceholder"], ["title", "i18nTitle"], ["aria-label", "i18nAriaLabel"]]) {
+      for (const node of root.querySelectorAll(`[data-i18n-${attr}]`)) node.setAttribute(attr, t(node.dataset[key]));
+    }
+  }
+  applyI18n(document);
 
   // Jogos +18: escondidos (Biblioteca, contagens, categorias, Recentes) se a opção
   // "Mostrar jogos +18" estiver desligada, que é o padrão.
@@ -623,19 +660,19 @@
     return minutes % 60 ? `${hours} h ${minutes % 60} min` : `${hours} h`;
   }
 
-  const relativeTime = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
+  const relativeTime = new Intl.RelativeTimeFormat(L.lang, { numeric: "auto" });
   function formatLastPlayed(unixSeconds) {
     const diff = Date.now() / 1000 - unixSeconds;
-    if (diff < 60) return "agora há pouco";
+    if (diff < 60) return t("time.just_now");
     for (const [unit, size] of [["year", 31536000], ["month", 2592000], ["day", 86400], ["hour", 3600], ["minute", 60]]) {
       if (diff >= size) return relativeTime.format(-Math.floor(diff / size), unit);
     }
-    return "agora há pouco";
+    return t("time.just_now");
   }
 
   function metaLine(game) {
     const { seconds, last_played } = statsOf(game);
-    return last_played ? `${formatPlaytime(seconds)} · ${formatLastPlayed(last_played)}` : "Nunca jogado";
+    return last_played ? `${formatPlaytime(seconds)} · ${formatLastPlayed(last_played)}` : t("card.never_played");
   }
 
   // Ordenação escolhida na barra superior (salva por visualizador).
@@ -643,7 +680,7 @@
   const SORTS = {
     // Último jogado ou recém adicionado; sem nenhuma data, mantém a ordem do catálogo.
     recent: (a, b) => Math.max(statsOf(b).last_played, b.added_at ?? 0) - Math.max(statsOf(a).last_played, a.added_at ?? 0),
-    name: (a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
+    name: (a, b) => a.name.localeCompare(b.name, L.lang, { sensitivity: "base" }),
     playtime: (a, b) => statsOf(b).seconds - statsOf(a).seconds,
   };
   sortSelect.value = SORTS[load(localStorage, "sortBy")] ? load(localStorage, "sortBy") : "recent";
@@ -655,7 +692,7 @@
   function allTags() {
     const counts = new Map();
     for (const game of visibleGames()) for (const tag of game.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
-    return [...counts].sort(([a], [b]) => a.localeCompare(b, "pt-BR"));
+    return [...counts].sort(([a], [b]) => a.localeCompare(b, L.lang));
   }
 
   function gamesForView(view) {
@@ -668,13 +705,13 @@
   }
 
   function viewName(view) {
-    if (view === "recent") return "Recentes";
-    if (view === "source:manual") return "Manual";
+    if (view === "recent") return t("view.recent");
+    if (view === "source:manual") return t("view.manual");
     if (view.startsWith("source:")) return view.slice(7);
-    if (view === "settings") return "Configurações";
-    if (view === "explore") return "Explorar";
+    if (view === "settings") return t("view.settings");
+    if (view === "explore") return t("view.explore");
     if (view.startsWith("tag:")) return view.slice(4);
-    return "Todos os jogos";
+    return t("view.all");
   }
 
   function navItem(view, iconName, label, total) {
@@ -692,13 +729,13 @@
     const section = (title, items) => el("div", { className: "nav-section" }, [el("h3", { textContent: title }), ...items]);
     const tags = allTags();
     sidebarNav.replaceChildren(
-      section("Biblioteca", [
-        navItem("all", "all", "Todos os jogos", gamesForView("all").length),
-        navItem("recent", "recent", "Recentes", recentGames().length),
-        navItem("explore", "explore", "Explorar"),
+      section(t("nav.library"), [
+        navItem("all", "all", t("view.all"), gamesForView("all").length),
+        navItem("recent", "recent", t("view.recent"), recentGames().length),
+        navItem("explore", "explore", t("view.explore")),
       ]),
-      section("Fontes", [
-        navItem("source:manual", "source", "Manual", gamesForView("source:manual").length),
+      section(t("nav.sources"), [
+        navItem("source:manual", "source", t("view.manual"), gamesForView("source:manual").length),
         ...(gamesForView("source:itch.io").length
           ? [navItem("source:itch.io", "itch", "itch.io", gamesForView("source:itch.io").length)]
           : []),
@@ -706,7 +743,7 @@
           ? [navItem("source:DMM GAMES", "source", "DMM GAMES", gamesForView("source:DMM GAMES").length)]
           : []),
       ]),
-      ...(tags.length ? [section("Categorias", tags.map(([tag, n]) => navItem(`tag:${tag}`, "tag", tag, n)))] : []),
+      ...(tags.length ? [section(t("nav.categories"), tags.map(([tag, n]) => navItem(`tag:${tag}`, "tag", tag, n)))] : []),
     );
     settingsItem.setAttribute("aria-current", currentView === "settings");
   }
@@ -750,7 +787,7 @@
   setMode(load(localStorage, "viewMode") === "list" ? "list" : "grid");
 
   function card(game) {
-    const thumb = el("div", { className: "thumb" }, [el("span", { className: "play", textContent: "▶ Jogar" })]);
+    const thumb = el("div", { className: "thumb" }, [el("span", { className: "play", textContent: t("card.play") })]);
     if (game.thumbnail) thumb.style.backgroundImage = cssUrl(game.thumbnail);
     const tags = el("div", { className: "tags" }, game.tags.map((t) => el("span", { className: "tag", textContent: t })));
     const info = el("div", { className: "info" }, [
@@ -774,14 +811,14 @@
       .filter((g) => !q || g.name.toLowerCase().includes(q) || g.tags.some((t) => t.toLowerCase().includes(q)))
       .sort(SORTS[sortSelect.value]);
     const empty = currentView === "recent" && !inView.length
-      ? "Nenhum jogo aberto recentemente."
-      : "Nenhum jogo encontrado.";
+      ? t("library.no_recent")
+      : t("library.empty");
     grid.replaceChildren(...(games.length
       ? games.map(card)
       : [el("div", { className: "empty", textContent: empty })]));
     count.textContent = q
-      ? `${games.length} de ${inView.length}`
-      : `${inView.length} jogo${inView.length === 1 ? "" : "s"}`;
+      ? t("count.filtered", { shown: games.length, total: inView.length })
+      : tn("count.games", inView.length);
   }
   search.addEventListener("input", renderLibrary);
 
@@ -801,7 +838,7 @@
     return new Promise((resolve) => {
       try {
         window.avengerExplore(JSON.stringify(request), (json) => {
-          try { resolve(JSON.parse(json)); } catch { resolve({ ok: false, error: "resposta inválida" }); }
+          try { resolve(JSON.parse(json)); } catch { resolve({ ok: false, error: t("error.invalid_response") }); }
         });
       } catch (err) {
         resolve({ ok: false, error: String(err.message ?? err) });
@@ -866,21 +903,21 @@
       explore.page = page;
       explore.more = result.more;
     } else {
-      explore.error = result.error ?? "Não foi possível carregar a lista.";
+      explore.error = result.error ?? t("explore.load_failed");
     }
     renderExplore();
   }
 
   function exploreCard(item) {
-    const play = el("button", { className: "action primary", textContent: "Jogar" });
+    const play = el("button", { className: "action primary", textContent: t("explore.play") });
     play.addEventListener("click", () => playExplored(item, play));
     const buttons = [play];
     if (item.store === "itch" || item.store === "feed") {
-      const add = el("button", { className: "action", textContent: "Adicionar" });
+      const add = el("button", { className: "action", textContent: t("common.add") });
       add.addEventListener("click", () => addExplored(item));
       buttons.push(add);
     }
-    const thumb = el("div", { className: "thumb", title: "Jogar" });
+    const thumb = el("div", { className: "thumb", title: t("explore.play") });
     if (item.thumbnail) thumb.style.backgroundImage = cssUrl(item.thumbnail);
     thumb.addEventListener("click", () => playExplored(item, play));
     const info = el("div", { className: "info" }, [
@@ -896,27 +933,27 @@
     const q = search.value.trim().toLowerCase();
     const items = explore.items.filter((item) =>
       !q || item.name.toLowerCase().includes(q) || (item.genre ?? "").toLowerCase().includes(q));
-    const message = explore.error || (explore.loading && !explore.items.length ? "Carregando…" : "Nenhum jogo encontrado.");
+    const message = explore.error || (explore.loading && !explore.items.length ? t("common.loading") : t("library.empty"));
     exploreGrid.replaceChildren(...(items.length && !explore.error
       ? items.map(exploreCard)
       : [el("div", { className: "empty", textContent: message })]));
     exploreMore.hidden = !explore.more || Boolean(explore.error) || !explore.items.length;
     exploreMore.disabled = explore.loading;
-    exploreMore.textContent = explore.loading ? "Carregando…" : "Carregar mais";
+    exploreMore.textContent = explore.loading ? t("common.loading") : t("explore.more");
     count.textContent = q
-      ? `${items.length} de ${explore.items.length}`
-      : `${explore.items.length} jogo${explore.items.length === 1 ? "" : "s"}`;
+      ? t("count.filtered", { shown: items.length, total: explore.items.length })
+      : tn("count.games", explore.items.length);
   }
 
   async function playExplored(item, button) {
     if (button.disabled) return;
     button.disabled = true;
-    button.textContent = "Abrindo…";
+    button.textContent = t("explore.opening");
     const action = item.store === "dmm" || item.store === "fanza" ? "play_dmm" : "play_page";
     const result = await exploreCall({ action, ...item });
     button.disabled = false;
-    button.textContent = "Jogar";
-    if (!result.ok) return showToast(result.error ?? "Não foi possível abrir o jogo.");
+    button.textContent = t("explore.play");
+    if (!result.ok) return showToast(result.error ?? t("explore.open_failed"));
     // Jogo gravado na Biblioteca: recarrega para ele aparecer (a view continua Explorar).
     if (result.added) location.reload();
   }
@@ -953,7 +990,7 @@
     feedForm.reset();
     feedError.hidden = true;
     feedSubmit.disabled = false;
-    feedSubmit.textContent = "Adicionar";
+    feedSubmit.textContent = t("common.add");
     feedDialog.showModal();
     feedForm.url.focus();
   });
@@ -964,18 +1001,18 @@
     event.preventDefault();
     const url = feedForm.url.value.trim();
     if (settings.feeds.some((feed) => feed.url === url)) {
-      feedError.textContent = "Esse feed já está cadastrado.";
+      feedError.textContent = t("feed.duplicate");
       feedError.hidden = false;
       return;
     }
     feedSubmit.disabled = true;
-    feedSubmit.textContent = "Lendo o feed…";
+    feedSubmit.textContent = t("feed.reading");
     feedError.hidden = true;
     const result = await exploreCall({ action: "list", store: "feed", url });
     feedSubmit.disabled = false;
-    feedSubmit.textContent = "Adicionar";
+    feedSubmit.textContent = t("common.add");
     if (!result.ok) {
-      feedError.textContent = result.error ?? "Não foi possível ler o feed.";
+      feedError.textContent = result.error ?? t("feed.read_failed");
       feedError.hidden = false;
       return;
     }
@@ -994,14 +1031,14 @@
   // Remover pede confirmação: o primeiro clique só arma o botão.
   function resetFeedRemove() {
     feedRemove.classList.remove("confirm");
-    feedRemove.textContent = "Remover feed";
+    feedRemove.textContent = t("explore.feed_remove");
   }
   feedRemove.addEventListener("click", () => {
     const n = Number(exploreStore.value.slice(5));
     if (!feedOf(exploreStore.value)) return;
     if (!feedRemove.classList.contains("confirm")) {
       feedRemove.classList.add("confirm");
-      feedRemove.textContent = "Confirmar remoção";
+      feedRemove.textContent = t("common.confirm_remove");
       return;
     }
     settings.feeds.splice(n, 1);
@@ -1074,17 +1111,17 @@
   // O link vem de terceiros: só aceita os campos conhecidos, com tipo e tamanho válidos.
   async function parseShareLink(text) {
     text = text.trim();
-    if (!text.toLowerCase().startsWith(SHARE_PREFIX)) return { error: "Este não é um link de jogo do Web Avenger." };
+    if (!text.toLowerCase().startsWith(SHARE_PREFIX)) return { error: t("share.not_link") };
     const params = new URLSearchParams(text.slice(SHARE_PREFIX.length));
     const version = params.get("v");
-    if (version !== "1" && version !== SHARE_VERSION) return { error: "Link criado por uma versão diferente do Web Avenger." };
+    if (version !== "1" && version !== SHARE_VERSION) return { error: t("share.other_version") };
     let manifest;
     try {
       manifest = await readManifest(version, params.get("m") ?? "");
     } catch {
-      return { error: "Link incompleto ou corrompido." };
+      return { error: t("share.corrupt") };
     }
-    if (!manifest || typeof manifest !== "object") return { error: "Link incompleto ou corrompido." };
+    if (!manifest || typeof manifest !== "object") return { error: t("share.corrupt") };
     const field = (value, max) => (typeof value === "string" ? value.trim().slice(0, max) : "");
     const game = {
       name: field(manifest.name, 120),
@@ -1096,8 +1133,8 @@
         ? manifest.tags.filter((tag) => typeof tag === "string").map((tag) => tag.trim().slice(0, 40)).filter(Boolean).slice(0, 20)
         : [],
     };
-    if (!game.name) return { error: "O link não tem o nome do jogo." };
-    if (!/^(https?|file):\/\/.+/i.test(game.url)) return { error: "O link não tem uma URL de jogo válida." };
+    if (!game.name) return { error: t("share.no_name") };
+    if (!/^(https?|file):\/\/.+/i.test(game.url)) return { error: t("share.no_url") };
     return { game };
   }
 
@@ -1121,15 +1158,15 @@
     area.select();
     const ok = document.execCommand("copy");
     area.remove();
-    if (!ok) throw new Error("a área de transferência não está disponível");
+    if (!ok) throw new Error(t("share.no_clipboard"));
   }
 
   async function shareGame(game) {
     try {
       await copyText(await shareLink(game));
-      showToast(`Link de ${game.name} copiado`);
+      showToast(t("share.copied", { name: game.name }));
     } catch (err) {
-      showToast(`Não foi possível copiar o link: ${err.message ?? err}`);
+      showToast(t("share.copy_failed", { error: err.message ?? err }));
     }
   }
 
@@ -1137,9 +1174,9 @@
   function createShortcut(game) {
     try {
       window.avengerCreateShortcut(game.id);
-      showToast(`Atalho de ${game.name} criado na área de trabalho`);
+      showToast(t("shortcut.created", { name: game.name }));
     } catch (err) {
-      showToast(`Não foi possível criar o atalho: ${err.message ?? err}`);
+      showToast(t("shortcut.failed", { error: err.message ?? err }));
     }
   }
 
@@ -1154,7 +1191,7 @@
     const url = gameForm.thumbnail.value.trim();
     const valid = url && gameForm.thumbnail.checkValidity();
     gamePreview.style.backgroundImage = valid ? cssUrl(url) : "";
-    gamePreview.textContent = valid ? "" : "Sem capa";
+    gamePreview.textContent = valid ? "" : t("game.no_cover");
   }
 
   const urlForm = document.getElementById("url-form");
@@ -1171,8 +1208,8 @@
 
   function setEditing(id) {
     editingId = id;
-    gameFormTitle.textContent = id ? "Editar jogo" : "Adicionar jogo";
-    gameSubmit.textContent = id ? "Salvar" : "Adicionar";
+    gameFormTitle.textContent = id ? t("game.edit_title") : t("game.add_title");
+    gameSubmit.textContent = id ? t("common.save") : t("common.add");
     gameBack.hidden = Boolean(id);
     gameRemove.hidden = !id;
     resetRemove();
@@ -1181,19 +1218,19 @@
   // Remover pede confirmação: o primeiro clique só arma o botão.
   function resetRemove() {
     gameRemove.classList.remove("confirm");
-    gameRemove.textContent = "Remover jogo";
+    gameRemove.textContent = t("game.remove");
   }
 
   gameRemove.addEventListener("click", () => {
     if (!gameRemove.classList.contains("confirm")) {
       gameRemove.classList.add("confirm");
-      gameRemove.textContent = "Confirmar remoção";
+      gameRemove.textContent = t("common.confirm_remove");
       return;
     }
     try {
       window.avengerRemoveGame(editingId);
     } catch (err) {
-      gameError.textContent = `Não foi possível remover: ${err.message ?? err}`;
+      gameError.textContent = t("game.remove_failed", { error: err.message ?? err });
       gameError.hidden = false;
       resetRemove();
       return;
@@ -1213,8 +1250,8 @@
 
   function setFetching(fetching) {
     urlForm.url.disabled = urlNext.disabled = fetching;
-    urlNext.textContent = fetching ? "Buscando…" : "Continuar";
-    urlStatus.textContent = fetching ? "Lendo o título da página…" : URL_HINT;
+    urlNext.textContent = fetching ? t("game.fetching") : t("game.continue");
+    urlStatus.textContent = fetching ? t("game.reading_page") : URL_HINT;
   }
 
   // `avengerFetchPageInfo` é injetado pelo launcher (baixa a página no processo principal).
@@ -1273,10 +1310,10 @@
     gameForm.thumbnail.value = game.thumbnail;
     gameForm.tags.value = game.tags.join(", ");
     detectedHint.hidden = false;
-    detectedHint.textContent = "Importado de um link compartilhado.";
+    detectedHint.textContent = t("game.imported_link");
     updatePreview();
     const existing = GAMES.find((g) => normalizeUrl(g.url) === normalizeUrl(game.url));
-    gameError.textContent = existing ? `Você já tem este jogo: ${existing.name}` : "";
+    gameError.textContent = existing ? t("game.already_have", { name: existing.name }) : "";
     gameError.hidden = !existing;
     showStep(2);
     gameForm.name.select();
@@ -1307,14 +1344,14 @@
     gameForm.homepage.value = embedded ? url : "";
     detectedHint.hidden = !embedded;
     detectedHint.textContent = /\.itch\.io\//.test(url + "/")
-      ? "Jogo do itch.io detectado — a página original fica salva como site."
-      : "Jogo detectado na página — a página original fica salva como site.";
+      ? t("game.detected_itch")
+      : t("game.detected");
     gameForm.name.value = info.title || nameFromUrl(url);
     gameForm.description.value = info.description ?? "";
     gameForm.thumbnail.value = info.thumbnail ?? "";
     gameForm.tags.value = (info.tags ?? []).join(", ");
     updatePreview();
-    gameError.textContent = "Não foi possível ler a página; preencha os dados manualmente.";
+    gameError.textContent = t("game.page_failed");
     gameError.hidden = info.ok;
     showStep(2);
     gameForm.name.select();
@@ -1355,7 +1392,7 @@
         GAMES.push(saved);
       }
     } catch (err) {
-      gameError.textContent = `Não foi possível salvar: ${err.message ?? err}`;
+      gameError.textContent = t("game.save_failed", { error: err.message ?? err });
       gameError.hidden = false;
       return;
     }
@@ -1383,7 +1420,7 @@
     gameForm.tags.value = game.tags.join(", ");
     gameForm.adblock.checked = !game.no_adblock;
     detectedHint.hidden = !game.homepage;
-    detectedHint.textContent = game.homepage ? `Página do jogo: ${game.homepage}` : "";
+    detectedHint.textContent = game.homepage ? t("game.homepage", { url: game.homepage }) : "";
     gameError.hidden = true;
     updatePreview();
     gameDialog.showModal();
@@ -1448,7 +1485,7 @@
   // ---- Configurações ----
   // `avengerSettings` e `avengerSaveSettings` são injetados pelo launcher.
   const settings = Object.assign(
-    { fullscreen_games: true, maximize_player: true, show_adult: false, input_translation: false, button_layout: "position", mappings: {}, feeds: [] },
+    { fullscreen_games: true, maximize_player: true, show_adult: false, input_translation: false, button_layout: "position", mappings: {}, feeds: [], language: null },
     window.avengerSettings);
   const fullscreenInput = document.getElementById("fullscreen-games");
   const maximizeInput = document.getElementById("maximize-player");
@@ -1479,9 +1516,9 @@
     for (const other of document.querySelectorAll(".saved.show")) other.classList.remove("show");
     try {
       window.avengerSaveSettings(JSON.stringify(settings));
-      saved.textContent = "✓ Salvo";
+      saved.textContent = t("settings.saved");
     } catch (err) {
-      saved.textContent = `Erro ao salvar: ${err.message ?? err}`;
+      saved.textContent = t("settings.save_failed", { error: err.message ?? err });
     }
     saved.classList.add("show");
     clearTimeout(savedTimer);
@@ -1508,6 +1545,17 @@
   layoutSelect.addEventListener("change", () => { settings.button_layout = layoutSelect.value; save(); });
   applySettings();
 
+  // Idioma: "" = automático (idioma do sistema). Os textos vêm na carga da página.
+  const languageSelect = document.getElementById("language");
+  for (const { code, name } of L.languages) languageSelect.append(el("option", { value: code, textContent: name }));
+  languageSelect.value = settings.language ?? "";
+  if (languageSelect.selectedIndex < 0) languageSelect.value = "";
+  languageSelect.addEventListener("change", () => {
+    settings.language = languageSelect.value || null;
+    save();
+    location.reload();
+  });
+
   // ---- Testador de controle ----
   const padsEl = document.getElementById("pads");
   const hint = document.getElementById("tester-hint");
@@ -1528,14 +1576,14 @@
     const changed = translated !== raw;
     const mapped = changed && settings.mappings[vendorKey(raw.id)];
     const status = !recognized
-      ? el("span", { className: "badge warn", textContent: "não reconhecido pelos jogos" })
-      : el("span", { className: "badge ok", textContent: mapped ? "mapeamento manual" : changed ? "traduzido para Xbox" : "compatível" });
+      ? el("span", { className: "badge warn", textContent: t("tester.unrecognized") })
+      : el("span", { className: "badge ok", textContent: mapped ? t("tester.manual") : changed ? t("tester.translated") : t("tester.compatible") });
 
     const ids = el("dl", { className: "ids" }, [
-      el("dt", { textContent: "Controle" }), el("dd", { textContent: raw.id }),
-      el("dt", { textContent: "Mapping" }), el("dd", { textContent: raw.mapping || "(cru)" }),
-      el("dt", { textContent: "Jogos veem" }), el("dd", { textContent: translated.id }),
-      el("dt", { textContent: "Status" }), el("dd", {}, [status]),
+      el("dt", { textContent: t("settings.controller") }), el("dd", { textContent: raw.id }),
+      el("dt", { textContent: t("tester.mapping") }), el("dd", { textContent: raw.mapping || t("tester.raw") }),
+      el("dt", { textContent: t("tester.games_see") }), el("dd", { textContent: translated.id }),
+      el("dt", { textContent: t("tester.status") }), el("dd", {}, [status]),
     ]);
 
     const names = recognized ? STANDARD_BUTTONS : [];
@@ -1572,18 +1620,15 @@
 
   // Passos do assistente, na ordem standard (botões) e depois os 4 eixos.
   const BUTTON_PROMPTS = [
-    "A (botão de baixo)", "B (botão da direita)", "X (botão da esquerda)", "Y (botão de cima)",
-    "LB (ombro esquerdo)", "RB (ombro direito)", "LT (gatilho esquerdo)", "RT (gatilho direito)",
-    "Back / Select", "Start", "LS (clique no analógico esquerdo)", "RS (clique no analógico direito)",
-    "D-pad para cima", "D-pad para baixo", "D-pad para a esquerda", "D-pad para a direita", "Guide / Home",
+    t("pad.a"), t("pad.b"), t("pad.x"), t("pad.y"),
+    t("pad.lb"), t("pad.rb"), t("pad.lt"), t("pad.rt"),
+    t("pad.back"), t("pad.start"), t("pad.ls"), t("pad.rs"),
+    t("pad.up"), t("pad.down"), t("pad.left"), t("pad.right"), t("pad.guide"),
   ];
-  const AXIS_PROMPTS = [
-    "Analógico esquerdo para a direita", "Analógico esquerdo para baixo",
-    "Analógico direito para a direita", "Analógico direito para baixo",
-  ];
+  const AXIS_PROMPTS = [t("pad.lx"), t("pad.ly"), t("pad.rx"), t("pad.ry")];
   const STEPS = [
-    ...BUTTON_PROMPTS.map((prompt, i) => ({ kind: "button", index: i, prompt: `Pressione ${prompt}` })),
-    ...AXIS_PROMPTS.map((prompt, i) => ({ kind: "axis", index: i, prompt: `Mova o ${prompt.toLowerCase()}` })),
+    ...BUTTON_PROMPTS.map((button, i) => ({ kind: "button", index: i, prompt: t("wizard.press", { button }) })),
+    ...AXIS_PROMPTS.map((prompt, i) => ({ kind: "axis", index: i, prompt })),
   ];
   const THRESHOLD = 0.5;
   const RELEASED = 0.3;
@@ -1600,7 +1645,7 @@
       const current = mapperSelect.value;
       mapperSelect.replaceChildren(...(options.size
         ? [...options].map(([key, id]) => el("option", { value: key, textContent: id }))
-        : [el("option", { value: "", textContent: "Nenhum controle conectado" })]));
+        : [el("option", { value: "", textContent: t("mapper.none") })]));
       if (options.has(current)) mapperSelect.value = current;
       updateMapperButtons();
     }
@@ -1611,12 +1656,12 @@
     const key = mapperSelect.value;
     const hasMapping = Boolean(key && settings.mappings[key]);
     mapperStart.disabled = !key || Boolean(wizard);
-    mapperStart.textContent = hasMapping ? "Mapear de novo" : "Mapear";
+    mapperStart.textContent = hasMapping ? t("mapper.again") : t("mapper.start");
     mapperRemove.hidden = !hasMapping || Boolean(wizard);
     mapperSelect.disabled = Boolean(wizard);
     mapperStatus.textContent = !key
-      ? "Conecte um controle e aperte um botão."
-      : hasMapping ? "Este controle usa um mapeamento manual." : "Este controle usa o mapeamento automático.";
+      ? t("mapper.connect")
+      : hasMapping ? t("mapper.manual") : t("mapper.auto");
   }
 
   function startWizard() {
@@ -1639,11 +1684,11 @@
   function renderWizard() {
     const step = STEPS[wizard.step];
     document.getElementById("wizard-progress").style.width = `${(wizard.step / STEPS.length) * 100}%`;
-    document.getElementById("wizard-step").textContent = `Passo ${wizard.step + 1} de ${STEPS.length}`;
+    document.getElementById("wizard-step").textContent = t("wizard.step", { n: wizard.step + 1, total: STEPS.length });
     document.getElementById("wizard-prompt").textContent = step.prompt;
     document.getElementById("wizard-detail").textContent = wizard.candidate
-      ? "Detectado. Solte para continuar."
-      : step.kind === "axis" ? "Leve até o fim e solte." : "Se o controle não tiver esse botão, clique em Pular.";
+      ? t("wizard.detected")
+      : step.kind === "axis" ? t("wizard.axis_hint") : t("wizard.button_hint");
   }
 
   // Lê o controle a cada frame: detecta a entrada, espera soltar e grava.
@@ -1716,7 +1761,7 @@
     return new Promise((resolve) => {
       try {
         window.avengerItch(action, (json) => {
-          try { resolve(JSON.parse(json)); } catch { resolve({ ok: false, error: "resposta inválida" }); }
+          try { resolve(JSON.parse(json)); } catch { resolve({ ok: false, error: t("error.invalid_response") }); }
         });
       } catch (err) {
         resolve({ ok: false, error: String(err.message ?? err) });
@@ -1736,13 +1781,13 @@
     // Conexão antiga sem algum escopo que o launcher passou a pedir: autorizar de novo.
     const needsReconnect = status.connected && status.missing_scopes?.length > 0;
     itchStatus.textContent = !status.client_id
-      ? "Defina ITCH_CLIENT_ID para conectar (veja o README)."
-      : needsReconnect ? `Conectado como ${user ?? "usuário do itch.io"}, mas falta autorizar o acesso às coleções. Clique em Reconectar.`
-      : status.connected ? `Conectado como ${user ?? "usuário do itch.io"}.`
-      : status.error ? `Conexão salva inválida: ${status.error}`
-      : "Não conectado. Importa os jogos de navegador comprados e das suas coleções.";
+      ? t("itch.no_client")
+      : needsReconnect ? t("itch.needs_reconnect", { user: user ?? t("itch.default_user") })
+      : status.connected ? t("itch.connected", { user: user ?? t("itch.default_user") })
+      : status.error ? t("itch.invalid", { error: status.error })
+      : t("itch.not_connected");
     itchConnect.hidden = status.connected && !needsReconnect;
-    itchConnect.textContent = needsReconnect ? "Reconectar" : "Conectar";
+    itchConnect.textContent = needsReconnect ? t("apps.reconnect") : t("apps.connect");
     itchConnect.disabled = !status.client_id;
     itchSync.hidden = !status.connected || needsReconnect;
     itchDisconnect.hidden = !status.connected && !status.error;
@@ -1751,7 +1796,7 @@
 
   function resetItchDisconnect() {
     itchDisconnect.classList.remove("confirm");
-    itchDisconnect.textContent = "Desconectar";
+    itchDisconnect.textContent = t("apps.disconnect");
   }
 
   itchConnect.addEventListener("click", async () => {
@@ -1767,22 +1812,22 @@
 
   itchSync.addEventListener("click", async () => {
     itchSync.disabled = true;
-    itchSync.textContent = "Sincronizando…";
-    showItchMessage("Lendo seus jogos e coleções no itch.io…", "");
+    itchSync.textContent = t("apps.syncing");
+    showItchMessage(t("itch.reading"), "");
     const result = await itchCall("sync");
     itchSync.disabled = false;
-    itchSync.textContent = "Sincronizar";
+    itchSync.textContent = t("apps.sync");
     if (!result.ok) return showItchMessage(result.error, "error");
 
     const r = result.report;
     const parts = [
-      `${r.imported} jogo${r.imported === 1 ? "" : "s"} importado${r.imported === 1 ? "" : "s"}`,
-      `${r.existing} já na Biblioteca`,
-      `${r.not_web} só para download`,
+      tn("sync.imported", r.imported),
+      t("sync.existing", { count: r.existing }),
+      t("sync.download_only", { count: r.not_web }),
     ];
-    if (r.removed) parts.push(`${r.removed} removido${r.removed === 1 ? "" : "s"} (saíram do itch.io)`);
-    if (r.failed.length) parts.push(`sem versão de navegador encontrada: ${r.failed.join(", ")}`);
-    if (r.skipped_collections?.length) parts.push(`coleções não lidas: ${r.skipped_collections.join(", ")}`);
+    if (r.removed) parts.push(tn("itch.removed", r.removed));
+    if (r.failed.length) parts.push(t("itch.no_web_version", { list: r.failed.join(", ") }));
+    if (r.skipped_collections?.length) parts.push(t("itch.skipped_collections", { list: r.skipped_collections.join(", ") }));
     const text = `${parts.join(" · ")}.`;
     if (r.imported || r.removed) {
       // A Biblioteca foi regerada com os jogos novos/removidos: recarrega e mantém a mensagem.
@@ -1796,11 +1841,11 @@
   itchDisconnect.addEventListener("click", async () => {
     if (!itchDisconnect.classList.contains("confirm")) {
       itchDisconnect.classList.add("confirm");
-      itchDisconnect.textContent = "Confirmar";
+      itchDisconnect.textContent = t("common.confirm");
       return;
     }
     const result = await itchCall("disconnect");
-    showItchMessage(result.ok ? "Desconectado. Os jogos importados continuam na Biblioteca." : result.error,
+    showItchMessage(result.ok ? t("apps.disconnected") : result.error,
       result.ok ? "ok" : "error");
     refreshItch();
   });
@@ -1813,8 +1858,8 @@
     history.replaceState(null, "", location.pathname);
     showItchMessage(
       itchReturn.get("itch") === "ok"
-        ? `Conectado${itchReturn.get("user") ? ` como ${itchReturn.get("user")}` : ""}. Clique em Sincronizar para importar seus jogos.`
-        : itchReturn.get("msg") ?? "Não foi possível conectar.",
+        ? (itchReturn.get("user") ? t("apps.connected_as_sync", { user: itchReturn.get("user") }) : t("apps.connected_sync"))
+        : itchReturn.get("msg") ?? t("apps.connect_failed"),
       itchReturn.get("itch") === "ok" ? "ok" : "error");
   } else if (pendingItchMessage) {
     showItchMessage(pendingItchMessage, "ok");
@@ -1835,7 +1880,7 @@
     return new Promise((resolve) => {
       try {
         window.avengerDmm(action, (json) => {
-          try { resolve(JSON.parse(json)); } catch { resolve({ ok: false, error: "resposta inválida" }); }
+          try { resolve(JSON.parse(json)); } catch { resolve({ ok: false, error: t("error.invalid_response") }); }
         });
       } catch (err) {
         resolve({ ok: false, error: String(err.message ?? err) });
@@ -1854,11 +1899,11 @@
     // O FANZA tem login próprio: sem ele, os jogos +18 não abrem logados.
     const needsAdult = status.connected && !status.adult;
     dmmStatus.textContent = needsAdult
-      ? "Conectado ao DMM, mas falta o login no FANZA. Clique em Reconectar."
-      : status.connected ? "Conectado ao DMM e ao FANZA."
-      : "Não conectado. Importa os jogos de navegador de Meus jogos (マイゲーム). Fora do Japão, use uma VPN.";
+      ? t("dmm.needs_adult")
+      : status.connected ? t("dmm.connected")
+      : t("dmm.not_connected");
     dmmConnect.hidden = status.connected && !needsAdult;
-    dmmConnect.textContent = needsAdult ? "Reconectar" : "Conectar";
+    dmmConnect.textContent = needsAdult ? t("apps.reconnect") : t("apps.connect");
     dmmSync.hidden = !status.connected;
     dmmDisconnect.hidden = !status.connected && !status.adult;
     resetDmmDisconnect();
@@ -1866,7 +1911,7 @@
 
   function resetDmmDisconnect() {
     dmmDisconnect.classList.remove("confirm");
-    dmmDisconnect.textContent = "Desconectar";
+    dmmDisconnect.textContent = t("apps.disconnect");
   }
 
   dmmConnect.addEventListener("click", async () => {
@@ -1882,21 +1927,21 @@
 
   dmmSync.addEventListener("click", async () => {
     dmmSync.disabled = true;
-    dmmSync.textContent = "Sincronizando…";
-    showDmmMessage("Lendo Meus jogos no DMM…", "");
+    dmmSync.textContent = t("apps.syncing");
+    showDmmMessage(t("dmm.reading"), "");
     const result = await dmmCall("sync");
     dmmSync.disabled = false;
-    dmmSync.textContent = "Sincronizar";
+    dmmSync.textContent = t("apps.sync");
     if (!result.ok) return showDmmMessage(result.error, "error");
 
     const r = result.report;
     const parts = [
-      `${r.imported} jogo${r.imported === 1 ? "" : "s"} importado${r.imported === 1 ? "" : "s"}`,
-      `${r.existing} já na Biblioteca`,
-      `${r.not_web} fora do navegador`,
+      tn("sync.imported", r.imported),
+      t("sync.existing", { count: r.existing }),
+      t("sync.not_browser", { count: r.not_web }),
     ];
-    if (r.removed) parts.push(`${r.removed} removido${r.removed === 1 ? "" : "s"} (saíram do DMM)`);
-    if (r.failed.length) parts.push(`sem endereço de jogo: ${r.failed.join(", ")}`);
+    if (r.removed) parts.push(tn("dmm.removed", r.removed));
+    if (r.failed.length) parts.push(t("dmm.no_address", { list: r.failed.join(", ") }));
     const text = `${parts.join(" · ")}.`;
     if (r.imported || r.removed) {
       store(sessionStorage, "dmmMessage", text);
@@ -1909,11 +1954,11 @@
   dmmDisconnect.addEventListener("click", async () => {
     if (!dmmDisconnect.classList.contains("confirm")) {
       dmmDisconnect.classList.add("confirm");
-      dmmDisconnect.textContent = "Confirmar";
+      dmmDisconnect.textContent = t("common.confirm");
       return;
     }
     const result = await dmmCall("disconnect");
-    showDmmMessage(result.ok ? "Desconectado. Os jogos importados continuam na Biblioteca." : result.error,
+    showDmmMessage(result.ok ? t("apps.disconnected") : result.error,
       result.ok ? "ok" : "error");
     refreshDmm();
   });
@@ -1926,8 +1971,8 @@
     history.replaceState(null, "", location.pathname);
     showDmmMessage(
       dmmReturn.get("dmm") === "ok"
-        ? `Conectado${dmmReturn.get("user") ? ` como ${dmmReturn.get("user")}` : ""}. Clique em Sincronizar para importar seus jogos.`
-        : dmmReturn.get("msg") ?? "Não foi possível conectar.",
+        ? (dmmReturn.get("user") ? t("apps.connected_as_sync", { user: dmmReturn.get("user") }) : t("apps.connected_sync"))
+        : dmmReturn.get("msg") ?? t("apps.connect_failed"),
       dmmReturn.get("dmm") === "ok" ? "ok" : "error");
   } else if (pendingDmmMessage) {
     showDmmMessage(pendingDmmMessage, "ok");

@@ -4,7 +4,7 @@
 //! redireciona para `REDIRECT_URI`; nada escuta nesse endereço: o `RequestHandler`
 //! do cliente intercepta a navegação, pega o `code` e troca pelo token aqui.
 
-use crate::http;
+use crate::{http, i18n};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -93,11 +93,11 @@ pub fn parse_redirect(url: &str) -> Option<Redirect> {
     let get = |name: &str| params.iter().find(|(key, _)| key == name).map(|(_, value)| value.clone());
     Some(match (get("code"), get("state"), get("error")) {
         (_, _, Some(error)) => Redirect::Error(match error.as_str() {
-            "access_denied" => "Autorização negada no itch.io.".into(),
+            "access_denied" => i18n::t("itch.denied"),
             _ => get("error_description").unwrap_or(error),
         }),
         (Some(code), Some(state), None) => Redirect::Code { code, state },
-        _ => Redirect::Error("Resposta do itch.io sem código de autorização.".into()),
+        _ => Redirect::Error(i18n::t("itch.no_code")),
     })
 }
 
@@ -106,8 +106,8 @@ pub fn take_verifier(state: &str) -> Result<String, String> {
     let pending = PENDING.lock().map_err(|e| e.to_string())?.take();
     match pending {
         Some(p) if p.state == state && p.created.elapsed() < PENDING_TTL => Ok(p.verifier),
-        Some(p) if p.state == state => Err("O login expirou; tente conectar de novo.".into()),
-        _ => Err("Resposta de login inesperada (state não confere).".into()),
+        Some(p) if p.state == state => Err(i18n::t("itch.login_expired")),
+        _ => Err(i18n::t("itch.login_state")),
     }
 }
 
@@ -141,21 +141,17 @@ pub fn exchange(
         Box::new(move |result| {
             done(result.and_then(|response| {
                 let parsed: TokenResponse = serde_json::from_slice(&response.body)
-                    .map_err(|_| format!("resposta inesperada do itch.io (HTTP {})", response.status))?;
+                    .map_err(|_| i18n::tf("itch.unexpected_http", &[("status", &response.status.to_string())]))?;
                 match parsed.access_token {
                     Some(token) if response.ok() => {
                         let scopes = parsed.scope.unwrap_or_default().split_whitespace().map(str::to_string).collect();
                         Ok((token, scopes))
                     }
                     _ => Err(match parsed.errors.into_iter().next().or(parsed.error).as_deref() {
-                        Some("invalid_grant") => {
-                            "O código de autorização é inválido ou expirou; tente conectar de novo.".into()
-                        }
-                        Some("invalid_client") => {
-                            "O itch.io não reconheceu o ITCH_CLIENT_ID; confira o app OAuth.".into()
-                        }
-                        Some(other) => format!("O itch.io recusou o login: {other}"),
-                        None => format!("O itch.io recusou o login (HTTP {}).", response.status),
+                        Some("invalid_grant") => i18n::t("itch.code_invalid"),
+                        Some("invalid_client") => i18n::t("itch.client_unknown"),
+                        Some(other) => i18n::tf("itch.login_refused", &[("error", other)]),
+                        None => i18n::tf("itch.login_refused_http", &[("status", &response.status.to_string())]),
                     }),
                 }
             }))

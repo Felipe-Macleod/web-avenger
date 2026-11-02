@@ -16,7 +16,7 @@ pub const GAME_SWITCH: &str = "game";
 
 /// Cria (ou substitui) o atalho do jogo na área de trabalho e devolve o caminho dele.
 pub fn create(game: &Game) -> io::Result<PathBuf> {
-    let desktop = dirs::desktop_dir().ok_or_else(|| io::Error::other("área de trabalho não encontrada"))?;
+    let desktop = dirs::desktop_dir().ok_or_else(|| io::Error::other(crate::i18n::t("shortcut.no_desktop")))?;
     let exe = std::env::current_exe()?;
     std::fs::create_dir_all(&desktop)?;
     write_shortcut(&desktop, &exe, game)

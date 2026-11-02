@@ -60,7 +60,7 @@ pub fn fetch(request: Request, callback: Callback) {
     let callback = Arc::new(Mutex::new(Some(callback)));
     let mut client = HttpClient::new(Arc::default(), callback.clone());
     if !start(&request, &mut client) {
-        finish(&callback, Err(format!("não foi possível requisitar {}", request.url)));
+        finish(&callback, Err(crate::i18n::tf("error.request", &[("url", &request.url)])));
     }
 }
 
@@ -130,7 +130,7 @@ wrap_urlrequest_client! {
                     let body = self.body.lock().map(|mut body| std::mem::take(&mut *body)).unwrap_or_default();
                     Ok(Response { status, body })
                 }
-                _ => Err("falha de rede".to_string()),
+                _ => Err(crate::i18n::t("error.network")),
             };
             finish(&self.callback, result);
         }

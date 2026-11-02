@@ -4,7 +4,7 @@
 //! perfil principal (login feito no app), traz a lista no `__NEXT_DATA__` (estado do
 //! Apollo do Next.js), com os jogos do DMM GAMES e do FANZA GAMES juntos.
 
-use crate::{catalog, http, itch::sync::normalize_page, library};
+use crate::{catalog, http, i18n, itch::sync::normalize_page, library};
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashSet;
@@ -54,7 +54,7 @@ pub fn run(done: Box<dyn FnOnce(Result<(SyncReport, Option<String>), String>)>) 
     fetch_my_games(Box::new(move |result| {
         let page = match result {
             Ok(page) if page.logged_in => page,
-            Ok(_) => return done(Err("A sessão do DMM expirou. Clique em Conectar e faça login de novo.".into())),
+            Ok(_) => return done(Err(i18n::t("dmm.session_expired"))),
             Err(error) => return done(Err(error)),
         };
         let nickname = page.nickname.clone();
@@ -71,13 +71,13 @@ pub fn fetch_my_games(done: Box<dyn FnOnce(Result<MyGamesPage, String>)>) {
         Box::new(move |result| {
             let page = match result {
                 Ok(response) if response.ok() => parse_my_games(&response.text()),
-                Ok(response) => Err(format!("o DMM respondeu HTTP {}", response.status)),
+                Ok(response) => Err(i18n::tf("error.http", &[("site", "DMM"), ("status", &response.status.to_string())])),
                 Err(error) => Err(error),
             };
             // Fora do Japão o DMM devolve uma página de bloqueio, sem a lista.
             done(page.map_err(|error| {
                 eprintln!("[web-avenger] DMM: {error}");
-                "Não foi possível ler seus jogos no DMM. Fora do Japão, ative a VPN e tente de novo.".to_string()
+                i18n::t("dmm.read_failed")
             }))
         }),
     );

@@ -1,6 +1,6 @@
 //! Código que roda no processo de renderização (um por página).
 
-use crate::{audio, catalog, dmm, explore, itch, library, native_pads, page_info, playtime, settings, shortcut};
+use crate::{audio, catalog, dmm, explore, i18n, itch, library, native_pads, page_info, playtime, settings, shortcut};
 use cef::*;
 use std::{cell::RefCell, collections::HashMap};
 
@@ -108,6 +108,14 @@ wrap_render_process_handler! {
                 );
                 let json = serde_json::to_string(&settings).unwrap_or_default();
                 eval(context, &format!("window.avengerSettings = {json};"));
+                // Textos da interface no idioma em uso (ver `src/i18n.rs`).
+                let lang = i18n::resolve(settings.language.as_deref());
+                let languages: Vec<_> = i18n::languages()
+                    .into_iter()
+                    .map(|(code, name)| serde_json::json!({ "code": code, "name": name }))
+                    .collect();
+                let locale = serde_json::json!({ "lang": lang, "strings": i18n::strings(lang), "languages": languages });
+                eval(context, &format!("window.avengerLocale = {locale};"));
             }
             eval(context, &input_translation_script(&settings, is_library));
         }

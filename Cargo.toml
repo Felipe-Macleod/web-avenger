@@ -21,6 +21,8 @@ sha2 = "0.10"
 base64 = "0.22"
 # Bloqueio de anúncios nas janelas de jogo (motor do Brave, listas EasyList/EasyPrivacy).
 # Sem a feature padrão `single-thread`: o motor é consultado na thread de IO do CEF.
+# Idioma do sistema, para o idioma "Automático" (ver `src/i18n.rs`).
+sys-locale = "0.3"
 adblock = { version = "0.13", default-features = false, features = ["addr", "embedded-domain-resolver", "full-regex-handling"] }
 
 # Chaveiro do sistema: Secret Service no Linux, Credential Manager no Windows.
@@ -30,6 +32,10 @@ keyring = { version = "3", default-features = false, features = ["sync-secret-se
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", default-features = false, features = ["windows-native"] }
+
+[build-dependencies]
+# Valida as traduções de `locales/` no build (ver `build.rs`).
+serde_json = "1"
 
 # Manifesto do .exe (compatibilidade com Windows 10+, exigida pelo CEF).
 [target.'cfg(windows)'.build-dependencies]

@@ -7,7 +7,7 @@
 
 pub mod sync;
 
-use crate::http;
+use crate::{http, i18n};
 use cef::*;
 use serde_json::{json, Value};
 use std::{cell::RefCell, rc::Rc};
@@ -186,7 +186,7 @@ pub fn handle_navigation(frame: &mut Frame, url: &str) -> bool {
             Ok(page) if page.logged_in => {
                 format!("dmm=ok&user={}", http::url_encode(page.nickname.as_deref().unwrap_or("")))
             }
-            Ok(_) => format!("dmm=erro&msg={}", http::url_encode("O login no DMM não foi concluído.")),
+            Ok(_) => format!("dmm=erro&msg={}", http::url_encode(&i18n::t("dmm.login_incomplete"))),
             Err(error) => format!("dmm=erro&msg={}", http::url_encode(&error)),
         };
         // Com a sessão já ativa, os logins redirecionam sem a Biblioteca sair da tela: a

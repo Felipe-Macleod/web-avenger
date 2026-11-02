@@ -57,9 +57,9 @@ fn keyring_entry() -> Result<keyring::Entry, String> {
 fn keyring_error(err: keyring::Error) -> String {
     match err {
         keyring::Error::NoStorageAccess(e) | keyring::Error::PlatformFailure(e) => {
-            format!("Nenhum chaveiro do sistema disponível: {e}")
+            crate::i18n::tf("keyring.unavailable", &[("error", &e.to_string())])
         }
-        other => format!("Erro no chaveiro do sistema: {other}"),
+        other => crate::i18n::tf("keyring.error", &[("error", &other.to_string())]),
     }
 }
 
@@ -70,7 +70,7 @@ fn key(create: bool) -> Result<Option<[u8; 32]>, String> {
         Ok(secret) => secret
             .try_into()
             .map(Some)
-            .map_err(|_| "a chave guardada no chaveiro é inválida".to_string()),
+            .map_err(|_| crate::i18n::t("keyring.bad_key")),
         Err(keyring::Error::NoEntry) if create => {
             let mut key = [0u8; 32];
             getrandom::getrandom(&mut key).map_err(|e| format!("sem fonte de aleatoriedade: {e}"))?;
@@ -109,7 +109,7 @@ pub fn decrypt(key: &[u8; 32], data: &[u8]) -> Result<Vec<u8>, String> {
     let (nonce, ciphertext) = rest.split_at(NONCE_LEN);
     ChaCha20Poly1305::new(Key::from_slice(key))
         .decrypt(Nonce::from_slice(nonce), ciphertext)
-        .map_err(|_| "o token não pôde ser decifrado (chave diferente ou arquivo alterado)".into())
+        .map_err(|_| crate::i18n::t("keyring.decrypt"))
 }
 
 pub fn save(data: &TokenData) -> Result<(), String> {
@@ -144,7 +144,7 @@ pub fn load() -> Result<Option<TokenData>, String> {
         Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(err) => return Err(err.to_string()),
     };
-    let key = key(false)?.ok_or("a chave do token não está no chaveiro do sistema")?;
+    let key = key(false)?.ok_or_else(|| crate::i18n::t("keyring.no_key"))?;
     let json = decrypt(&key, &data)?;
     serde_json::from_slice(&json).map(Some).map_err(|e| e.to_string())
 }

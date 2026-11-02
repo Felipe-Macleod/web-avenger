@@ -6,7 +6,7 @@
 //! URL do jogo HTML5 (mesma detecção do cadastro manual, com os cookies do perfil para
 //! jogos pagos).
 
-use crate::{catalog, http, library, page_info};
+use crate::{catalog, http, i18n, library, page_info};
 use serde::Serialize;
 use serde_json::Value;
 use std::{
@@ -88,7 +88,7 @@ fn get_json(job: &Shared, url: String, next: impl FnOnce(Value) + 'static) {
         Box::new(move |result| match result {
             Ok(response) if response.ok() => match serde_json::from_slice(&response.body) {
                 Ok(json) => next(json),
-                Err(_) => fail(&job, format!("resposta inválida da API do itch.io ({url})")),
+                Err(_) => fail(&job, i18n::tf("itch.api_invalid", &[("url", &url)])),
             },
             Ok(response) => {
                 let error = serde_json::from_slice::<Value>(&response.body)
@@ -98,7 +98,13 @@ fn get_json(job: &Shared, url: String, next: impl FnOnce(Value) + 'static) {
                 // Caminho sem o host, para a mensagem dizer qual chamada falhou.
                 let endpoint = url.strip_prefix(API).unwrap_or(&url);
                 eprintln!("[web-avenger] itch.io {endpoint}: HTTP {} {}", response.status, response.text());
-                fail(&job, format!("O itch.io recusou {endpoint} (HTTP {}): {error}", response.status));
+                fail(
+                    &job,
+                    i18n::tf(
+                        "itch.api_refused",
+                        &[("endpoint", endpoint), ("status", &response.status.to_string()), ("error", &error)],
+                    ),
+                );
             }
             Err(error) => fail(&job, error),
         }),
@@ -172,7 +178,7 @@ fn fetch_collection_page(job: Shared, collection: u64, title: String, page: u64,
             let html = match result {
                 Ok(response) if response.ok() => response.text(),
                 _ => {
-                    let name = if title.is_empty() { format!("coleção {collection}") } else { title };
+                    let name = if title.is_empty() { i18n::tf("itch.collection", &[("id", &collection.to_string())]) } else { title };
                     job.borrow_mut().report.skipped_collections.push(name);
                     return next_collection(job);
                 }

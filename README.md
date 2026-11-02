@@ -162,6 +162,18 @@ Os perfis do Chromium ficam em `~/.local/share/web-avenger/` (`%LOCALAPPDATA%\we
 
 Remover um jogo não apaga a pasta do perfil dele.
 
+## Idiomas
+
+O app está em português (Brasil) e em inglês. A escolha fica em **Configurações → Idioma**. No **Automático** (padrão), o app usa o idioma do sistema, e o inglês quando não há tradução para ele. Os menus do próprio Chromium (menu de contexto, diálogos de arquivo) seguem o idioma do sistema.
+
+As traduções ficam em `locales/<código>.json` (ex.: `pt-BR.json`, `en.json`) e são embutidas no binário no build. Cada arquivo é um JSON de chave → texto, com `"_name"` (o nome do idioma no seletor) e parâmetros como `{name}`; as chaves terminadas em `.one`/`.other` são o singular e o plural. Para adicionar um idioma:
+
+1. copie `locales/en.json` para `locales/<código>.json` (ex.: `es.json`, `fr.json`);
+2. traduza os textos e troque o `_name`;
+3. recompile (`./scripts/bundle.sh`).
+
+Uma chave que faltar no arquivo sai em português, então uma tradução parcial já funciona. O `cargo test` confere que o `en.json` tem as mesmas chaves do `pt-BR.json` e que toda chave usada no código existe.
+
 ## Licença
 
 O web-avenger é distribuído sob a licença [MIT](LICENSE). As dependências mantêm as próprias licenças, e os scripts de bundle colocam em `dist/web-avenger/`:

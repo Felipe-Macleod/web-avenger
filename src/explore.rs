@@ -5,7 +5,7 @@
 //! principal baixa as listas (fora das regras de CORS) e responde, como em `crate::dmm`.
 
 use crate::{
-    catalog, dmm, http,
+    catalog, dmm, http, i18n,
     itch::sync::parse_collection_page,
     library, page_info, settings, shell,
 };
@@ -55,7 +55,7 @@ pub fn handle_request(frame: &mut Frame, message: &ProcessMessage) -> bool {
             }
             "feed" => match request["url"].as_str().filter(|url| is_http(url)) {
                 Some(url) => list_feed(url.to_string(), show_adult, reply),
-                None => reply(json!({ "ok": false, "error": "Endereço de feed inválido." })),
+                None => reply(json!({ "ok": false, "error": i18n::t("error.feed_invalid") })),
             },
             other => reply(json!({ "ok": false, "error": format!("loja desconhecida: {other}") })),
         },
@@ -84,7 +84,7 @@ fn itch_list_url(sort: &str, page: u64, show_adult: bool) -> Result<String, Stri
         "" => "platform-web".to_string(),
         "top-rated" | "newest" | "top-sellers" => format!("{sort}/platform-web"),
         "nsfw" if show_adult => "platform-web/tag-nsfw".to_string(),
-        "nsfw" => return Err("Ligue \"Mostrar jogos +18\" para ver jogos +18.".into()),
+        "nsfw" => return Err(i18n::t("error.adult_list")),
         other => return Err(format!("ordem desconhecida: {other}")),
     };
     Ok(format!("https://itch.io/games/{path}?format=json&page={page}"))
@@ -97,11 +97,11 @@ fn list_feed(url: String, show_adult: bool, reply: Reply) {
         Box::new(move |result| {
             let xml = match result {
                 Ok(response) if response.ok() => response.text(),
-                Ok(response) => return reply(json!({ "ok": false, "error": format!("o feed respondeu HTTP {}", response.status) })),
+                Ok(response) => return reply(json!({ "ok": false, "error": i18n::tf("error.feed_http", &[("status", &response.status.to_string())]) })),
                 Err(error) => return reply(json!({ "ok": false, "error": error })),
             };
             let Some(feed) = parse_feed(&xml) else {
-                return reply(json!({ "ok": false, "error": "Esse endereço não é um feed RSS ou Atom." }));
+                return reply(json!({ "ok": false, "error": i18n::t("error.not_feed") }));
             };
             let items: Vec<Value> = feed
                 .items
@@ -302,7 +302,7 @@ fn collapse(text: &str) -> String {
 /// `popular` (padrão) ou `start` (mais jogados).
 fn dmm_list_url(adult: bool, sort: &str, show_adult: bool) -> Result<String, String> {
     if adult && !show_adult {
-        return Err("Ligue \"Mostrar jogos +18\" para ver o FANZA.".into());
+        return Err(i18n::t("error.adult_fanza"));
     }
     let sort = match sort {
         "" => "popular",
@@ -321,11 +321,11 @@ fn list_itch(url: String, reply: Reply) {
         Box::new(move |result| {
             let json: Value = match result {
                 Ok(response) if response.ok() => serde_json::from_slice(&response.body).unwrap_or_default(),
-                Ok(response) => return reply(json!({ "ok": false, "error": format!("o itch.io respondeu HTTP {}", response.status) })),
+                Ok(response) => return reply(json!({ "ok": false, "error": i18n::tf("error.http", &[("site", "itch.io"), ("status", &response.status.to_string())]) })),
                 Err(error) => return reply(json!({ "ok": false, "error": error })),
             };
             let Some(content) = json["content"].as_str() else {
-                return reply(json!({ "ok": false, "error": "resposta inesperada do itch.io" }));
+                return reply(json!({ "ok": false, "error": i18n::t("itch.unexpected") }));
             };
             let items: Vec<Value> = parse_collection_page(content)
                 .into_iter()
@@ -355,7 +355,7 @@ fn list_dmm(url: String, adult: bool, reply: Reply) {
         Box::new(move |result| {
             let items = match result {
                 Ok(response) if response.ok() => parse_dmm_list(&response.text(), adult),
-                Ok(response) => Err(format!("o DMM respondeu HTTP {}", response.status)),
+                Ok(response) => Err(i18n::tf("error.http", &[("site", "DMM"), ("status", &response.status.to_string())])),
                 Err(error) => Err(error),
             };
             match items {
@@ -363,7 +363,7 @@ fn list_dmm(url: String, adult: bool, reply: Reply) {
                 Err(error) => {
                     eprintln!("[web-avenger] Explorar: {url}: {error}");
                     // Fora do Japão o DMM devolve uma página de bloqueio, sem a lista.
-                    reply(json!({ "ok": false, "error": "Não foi possível ler a lista do DMM. Fora do Japão, ative a VPN e tente de novo." }))
+                    reply(json!({ "ok": false, "error": i18n::t("dmm.list_failed") }))
                 }
             }
         }),
@@ -436,13 +436,13 @@ wrap_set_cookie_callback! {
 /// manual, e o abre. Páginas que só incorporam o jogo (ex.: itch.io) abrem o jogo em si.
 fn play_page(request: &Value, show_adult: bool, reply: Reply) {
     let Some(page_url) = request["page_url"].as_str().filter(|url| is_http(url)).map(str::to_string) else {
-        return reply(json!({ "ok": false, "error": "jogo inválido" }));
+        return reply(json!({ "ok": false, "error": i18n::t("error.invalid_game") }));
     };
     let itch_id = request["id"].as_u64();
     if let Some(game) = catalog::find_by_page(&page_url, itch_id) {
         // Já conhecido mas removido pelo usuário: não volta para a Biblioteca.
         if game.removed {
-            return reply(json!({ "ok": false, "error": "Você removeu esse jogo da Biblioteca." }));
+            return reply(json!({ "ok": false, "error": i18n::t("error.game_removed") }));
         }
         let url = game.url.clone();
         shell::open_game(game, url);
@@ -455,7 +455,7 @@ fn play_page(request: &Value, show_adult: bool, reply: Reply) {
         false,
         Box::new(move |info| {
             if !show_adult && info.tags.iter().any(|tag| ADULT_TAGS.contains(&tag.as_str())) {
-                return reply(json!({ "ok": false, "error": "Jogo +18. Ligue \"Mostrar jogos +18\" para jogar." }));
+                return reply(json!({ "ok": false, "error": i18n::t("error.adult_game") }));
             }
             let game_url = info.game_url.clone().unwrap_or_else(|| page_url.clone());
             let game = catalog::Game {
@@ -498,11 +498,11 @@ fn is_http(url: &str) -> bool {
 fn play_dmm(request: &Value, show_adult: bool, reply: Reply) {
     let text = |key: &str| request[key].as_str().map(str::to_string);
     let (Some(id), Some(name), Some(link)) = (text("id"), text("name"), text("link")) else {
-        return reply(json!({ "ok": false, "error": "jogo inválido" }));
+        return reply(json!({ "ok": false, "error": i18n::t("error.invalid_game") }));
     };
     let adult = request["adult"].as_bool().unwrap_or(false) || link.contains(".dmm.co.jp/");
     if adult && !show_adult {
-        return reply(json!({ "ok": false, "error": "Ligue \"Mostrar jogos +18\" para jogar." }));
+        return reply(json!({ "ok": false, "error": i18n::t("error.adult_play") }));
     }
     let found = |id: &str| catalog::load().into_iter().find(|game| game.dmm_id.as_deref() == Some(id));
     let mut added = false;
@@ -518,7 +518,7 @@ fn play_dmm(request: &Value, show_adult: bool, reply: Reply) {
             browser: true,
         };
         let Some(new_game) = dmm::sync::to_catalog_game(&game) else {
-            return reply(json!({ "ok": false, "error": "Endereço de jogo não reconhecido." }));
+            return reply(json!({ "ok": false, "error": i18n::t("error.game_address") }));
         };
         let saved = catalog::add_imported_games(catalog::dmm_catalog_path(), vec![new_game])
             .and_then(|_| library::write(&catalog::load()).map(|_| ()));
@@ -529,7 +529,7 @@ fn play_dmm(request: &Value, show_adult: bool, reply: Reply) {
     }
     // Já conhecido mas removido pelo usuário: não volta para a Biblioteca.
     let Some(game) = found(&id) else {
-        return reply(json!({ "ok": false, "error": "Você removeu esse jogo da Biblioteca." }));
+        return reply(json!({ "ok": false, "error": i18n::t("error.game_removed") }));
     };
     let url = game.url.clone();
     shell::open_game(game, url);

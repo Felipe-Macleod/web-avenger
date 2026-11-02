@@ -7,7 +7,7 @@ pub mod oauth;
 pub mod sync;
 pub mod token_store;
 
-use crate::http;
+use crate::{http, i18n};
 use cef::*;
 use serde_json::{json, Value};
 
@@ -75,7 +75,7 @@ fn status() -> Value {
 
 fn connect() -> Value {
     let Some(client_id) = oauth::client_id() else {
-        return json!({ "ok": false, "error": "Defina ITCH_CLIENT_ID (veja o README)." });
+        return json!({ "ok": false, "error": i18n::t("itch.no_client_short") });
     };
     // Sem chaveiro não há onde guardar a chave do token: falha antes do login.
     if let Err(error) = token_store::ensure_key() {
@@ -90,7 +90,7 @@ fn connect() -> Value {
 fn sync(reply: Box<dyn FnOnce(Value)>) {
     let token = match token_store::load() {
         Ok(Some(token)) => token.access_token,
-        Ok(None) => return reply(json!({ "ok": false, "error": "Conecte ao itch.io primeiro." })),
+        Ok(None) => return reply(json!({ "ok": false, "error": i18n::t("itch.connect_first") })),
         Err(error) => return reply(json!({ "ok": false, "error": error })),
     };
     sync::run(
@@ -144,7 +144,7 @@ pub fn handle_navigation(frame: &mut Frame, url: &str) -> bool {
         },
     };
     let Some(client_id) = oauth::client_id() else {
-        back(Err("ITCH_CLIENT_ID não definido.".into()));
+        back(Err(i18n::t("itch.client_undefined")));
         return true;
     };
 
